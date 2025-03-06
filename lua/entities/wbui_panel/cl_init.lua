@@ -3,8 +3,94 @@ include("cl_input.lua")
 include("cl_nav.lua")
 
 local imgui = include("imgui.lua")
-local inputHandlerJs = file.Read("inputHandler.js", "GAME")
-assert(inputHandlerJs, "inputHandler not found")
+local inputHandlerJs = [[
+	function setupInputElement(element) {
+		if (!element.hasAttribute("data-gmod-initialized")) {
+			element.setAttribute("data-gmod-initialized", "true");
+
+			element.addEventListener("click", function () {
+				if (!this.id) {
+					this.id = "gmod_input_" + Math.random().toString(36).substr(2, 9);
+				}
+
+				this.focus();
+				this.select();
+				gmod.inputLock(this.id);
+			});
+		}
+	}
+
+	function setupEditableElement(element) {
+		if (!element.hasAttribute("data-gmod-initialized")) {
+			element.setAttribute("data-gmod-initialized", "true");
+
+			element.addEventListener("click", function () {
+				if (!this.id) {
+					this.id =
+						"gmod_editable_" + Math.random().toString(36).substr(2, 9);
+				}
+
+				this.focus();
+				if (window.getSelection && document.createRange) {
+					const range = document.createRange();
+					range.selectNodeContents(this);
+					const selection = window.getSelection();
+					selection.removeAllRanges();
+					selection.addRange(range);
+				}
+				gmod.inputLock(this.id);
+			});
+		}
+	}
+
+	function initializeExistingElements() {
+		document.querySelectorAll("input, textarea").forEach(setupInputElement);
+		document
+			.querySelectorAll("[contentEditable=true]")
+			.forEach(setupEditableElement);
+	}
+
+	function setupMutationObserver() {
+		const observer = new MutationObserver((mutations) => {
+			mutations.forEach((mutation) => {
+				if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+					mutation.addedNodes.forEach((node) => {
+						if (node.nodeType === Node.ELEMENT_NODE) {
+							if (node.matches("input, textarea")) {
+								setupInputElement(node);
+							}
+
+							if (node.getAttribute("contentEditable") === "true") {
+								setupEditableElement(node);
+							}
+
+							if (node.querySelectorAll) {
+								node
+									.querySelectorAll("input, textarea")
+									.forEach(setupInputElement);
+								node
+									.querySelectorAll("[contentEditable=true]")
+									.forEach(setupEditableElement);
+							}
+						}
+					});
+				}
+			});
+		});
+
+		observer.observe(document.body, {
+			childList: true,
+			subtree: true,
+		});
+
+		return observer;
+	}
+
+	initializeExistingElements();
+	setupMutationObserver();
+
+	console.log("[WBUI] Injected.");
+]]
 
 ENT.SizeRatio = 10 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -161,6 +247,14 @@ function ENT:Draw()
 			surface.DrawTexturedRectRotated(self.UiSize.x / 2, self.UiSize.y / 2, sizeX, sizeY, self:GetAngle())
 		elseif self.Panel:GetHTMLMaterial() then
 			self.Mat = self:CreateWebMaterial()
+		end
+
+		if mx and my then
+			local cursorSize = 10
+			local gradient = Material("gui/gradient")
+
+			render.SetMaterial(gradient)
+			surface.DrawCircle(mx, my, 2, 200, 200, 200, 200)
 		end
 
 		imgui.End3D2D()
