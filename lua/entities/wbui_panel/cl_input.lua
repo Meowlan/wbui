@@ -63,8 +63,12 @@ end
 -- TODO: prevent default behavior correctly, and support all inputs
 
 function ENT:HandleInputsCreateMove(cmd)
+    local state = cmd:KeyDown(IN_ATTACK) or cmd:KeyDown(IN_ATTACK2)
+    if state then
+        self.Panel:SetKeyBoardInputEnabled(false)
+    end
+
     if not IsValid(self) or not self.Hovering then return end
-    
     local wheelDelta = cmd:GetMouseWheel()
     if wheelDelta ~= 0 then
         self:SimulateScroll(wheelDelta)
@@ -72,7 +76,6 @@ function ENT:HandleInputsCreateMove(cmd)
         cmd:ClearButtons()
     end
 
-    local state = cmd:KeyDown(IN_ATTACK) or cmd:KeyDown(IN_ATTACK2)
     if not state and self._clickState then
         self._clickState = nil
         self:SimulateMouseClick()

@@ -3,6 +3,8 @@ include("cl_input.lua")
 include("cl_nav.lua")
 
 local imgui = include("imgui.lua")
+local inputHandlerJs = file.Read("inputHandler.js", "GAME")
+assert(inputHandlerJs, "inputHandler not found")
 
 ENT.SizeRatio = 10 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -51,6 +53,11 @@ function ENT:Setup()
 	self:OpenPage()
 end
 
+-- TODO: Dont forget to remove this
+if vgui.GetKeyboardFocus() then
+	vgui.GetKeyboardFocus():Remove()
+end
+
 function ENT:OpenPage()
 	if self.Panel then
 		self.Panel:Remove()
@@ -68,11 +75,23 @@ function ENT:OpenPage()
 		self.Panel.URL = url
 	end
 
-	self.Panel.OnChildViewCreated = function(self, sourceURL, targetURL)
-	   self.Panel:OpenURL(targetURL)
+	self.Panel.OnDocumentReady = function(self, url)
+		-- Inject javascript to detect forms or anything that requires keyboard input
+		self:RunJavascript(inputHandlerJs)
 	end
 
-	self.Panel.ConsoleMessage = function(self, message) end
+	self.Panel.OnFinishLoadingDocument = function(self, url)
+		self.Panel:AddFunction( "gmod", "inputLock", function( str )
+			self.Panel:MakePopup()
+			self.Panel:SetMouseInputEnabled(false)
+		end)
+	end
+
+	self.Panel.OnChildViewCreated = function(self, sourceURL, targetURL)
+	   self.Panel:OpenURL(targetURL) -- Otherwise hrefs to new pages dont open
+	end
+
+	-- self.Panel.ConsoleMessage = function(self, message) end
 end
 
 function ENT:CreateWebMaterial()
