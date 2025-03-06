@@ -1,22 +1,30 @@
--- wbui_panel.lua
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("cl_input.lua")
 AddCSLuaFile("cl_nav.lua")
 AddCSLuaFile("shared.lua")
 
+AddCSLuaFile("imgui.lua")
+
 include("shared.lua")
 
--- Server-side initialization
 function ENT:Initialize()
-    if SERVER then
-        self:SetModel("models/hunter/plates/plate2x2.mdl")
-        self:PhysicsInit(SOLID_VPHYSICS)
-        self:SetMoveType(MOVETYPE_VPHYSICS)
-        self:SetSolid(SOLID_VPHYSICS)
-    end
+    self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
+    self:SetURL("https://ui.shadcn.com/")
+    self:SetMaxDistance(500)
+    self:SetHTMLSize(1024)
+    self:SetAngle(0)
+    
+    self:SetModel("models/hunter/plates/plate1x2.mdl")
+    self:PhysicsInit(SOLID_VPHYSICS)
+    self:SetMoveType(MOVETYPE_VPHYSICS)
+    self:SetSolid(SOLID_VPHYSICS)
+
+    self:NetworkVarNotify("ScreenModel", function(ent, key, old, new)
+        ent:SetModel(new)
+        ent:PhysicsInit(SOLID_VPHYSICS)
+    end)
 end
 
--- Spawn function
 function ENT:SpawnFunction(ply, tr, ClassName)
     if not tr.Hit then return end
 
@@ -33,5 +41,3 @@ function ENT:SpawnFunction(ply, tr, ClassName)
 
     return ent
 end
-
-print("[WBUI] Web Browser Panel loaded")

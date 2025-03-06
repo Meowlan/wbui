@@ -33,7 +33,7 @@ function ENT:SimulateMouseHover()
         var element = document.elementFromPoint(x, y);
         
         if (element) {
-            var events = ['mouseover', 'mousemove'];
+            var events = ['mouseover', 'mousemove', 'mouseenter'];
             events.forEach(function(eventType) {
                 var event = new MouseEvent(eventType, {
                     'view': window,
@@ -63,10 +63,8 @@ end
 -- TODO: prevent default behavior correctly, and support all inputs
 
 function ENT:HandleInputsCreateMove(cmd)
-    -- Only process if entity is valid and hovering
     if not IsValid(self) or not self.Hovering then return end
     
-    -- Handle mouse wheel scroll
     local wheelDelta = cmd:GetMouseWheel()
     if wheelDelta ~= 0 then
         self:SimulateScroll(wheelDelta)
