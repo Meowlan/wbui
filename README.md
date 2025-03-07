@@ -42,6 +42,7 @@ The entity creates a DHTML panel on the client side and renders it onto a 3D sur
 
 - IMGUI library by wyozi
 - Developed by Meowlan
+- Much help from [Andreweathan](https://steamcommunity.com/id/andreweathan/)
 
 ## License 📄
 
