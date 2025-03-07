@@ -16,6 +16,7 @@ function ENT:Initialize()
     self:SetHTMLSize(1024)
     self:SetAngle(0)
     self:SetLocked(false)
+    self:SetVolume(0.5)
     
     self:SetModel("models/hunter/plates/plate1x2.mdl")
     self:PhysicsInit(SOLID_VPHYSICS)

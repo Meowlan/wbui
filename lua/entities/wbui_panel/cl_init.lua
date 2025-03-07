@@ -245,7 +245,7 @@ function ENT:Think()
       local maxDist = 500
       local distanceFactor = math.Clamp((1 - (dist / maxDist))^2, 0, 1)
 
-      local finalVolume = math.Clamp(angleFactor * distanceFactor * 0.2, 0, 0.2)
+      local finalVolume = math.Clamp(angleFactor * distanceFactor * self:GetVolume() * 0.2, 0, 0.2)
 
       self.Panel:RunJavascript(string.format([[
          document.querySelectorAll('audio, video').forEach(el => {

@@ -20,4 +20,5 @@ function ENT:SetupDataTables()
 	self:NetworkVar( "Int",    3, "Angle", { KeyName = "angle", Edit = { type = "Int", order = 3, min = 0, max = 360 } } )
 	self:NetworkVar( "Float",  4, "MaxDistance", { KeyName = "maxdistance", Edit = { type = "Float", order = 4, min = 1, max = 10000 } } )
 	self:NetworkVar( "Bool",   5, "Locked", { KeyName = "locked", Edit = { type = "Bool", order = 6 } } )
+	self:NetworkVar( "Float",  6, "Volume", { KeyName = "volume", Edit = { type = "Float", order = 7, min = 0, max = 1 } })
 end
