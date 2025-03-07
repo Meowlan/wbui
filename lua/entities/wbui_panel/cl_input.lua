@@ -1,53 +1,12 @@
-function ENT:SimulateMouseClick()
+function ENT:SimulateMouseInput(type)
     if not self.Panel or not self.UiInputs.MouseX or not self.UiInputs.MouseY then return end
 
     local clickScript = string.format([[
-        var x = %d;
-        var y = %d;
-        var element = document.elementFromPoint(x, y);
-        
-        if (element) {
-            var events = ['mouseover', 'mousedown', 'click', 'mouseup'];
-            events.forEach(function(eventType) {
-                var event = new MouseEvent(eventType, {
-                    'view': window,
-                    'bubbles': true,
-                    'cancelable': true,
-                    'clientX': x,
-                    'clientY': y
-                });
-                element.dispatchEvent(event);
-            });
-        }
-    ]], self.UiInputs.MouseX, self.UiInputs.MouseY)
+        if (window.gmod && typeof window.gmod.simulateMouseInput === "function")
+            gmod.simulateMouseInput("%s", %d, %d);
+    ]], type, self.UiInputs.MouseX, self.UiInputs.MouseY)
      
     self.Panel:RunJavascript(clickScript)
-end
-
-function ENT:SimulateMouseHover()
-    if not self.Panel or not self.UiInputs.MouseX or not self.UiInputs.MouseY then return end
-    
-    local enterScript = string.format([[
-        var x = %d;
-        var y = %d;
-        var element = document.elementFromPoint(x, y);
-        
-        if (element) {
-            var events = ['mouseover', 'mousemove', 'mouseenter'];
-            events.forEach(function(eventType) {
-                var event = new MouseEvent(eventType, {
-                    'view': window,
-                    'bubbles': true,
-                    'cancelable': true,
-                    'clientX': x,
-                    'clientY': y
-                });
-                element.dispatchEvent(event);
-            });
-        }
-    ]], self.UiInputs.MouseX, self.UiInputs.MouseY)
-     
-    self.Panel:RunJavascript(enterScript)
 end
 
 function ENT:SimulateScroll(delta)
@@ -62,9 +21,30 @@ end
 
 -- TODO: prevent default behavior correctly, and support all inputs
 
+function ENT:OnMouseDown()
+    self:SimulateMouseInput("mousedown")
+
+    self.UiInputs.MouseDown = true
+    self.UiInputs.LastMouseDown = SysTime()
+    self.UiInputs.LastMouseDownPos = {x = self.UiInputs.MouseX, y = self.UiInputs.MouseY}
+    self.UiInputs.LastMouseDownPosVGUI = {x = self.UiInputs.VguiMouseX, y = self.UiInputs.VguiMouseY}
+end
+
+function ENT:OnMouseUp()
+    self:SimulateMouseInput("mouseup")
+    self.UiInputs.MouseDown = false
+
+    sound.Play("ambient/water/drip1.wav", self:GetPos(), 75, 100)
+    self.UiInputs.LastMouseUp = SysTime()
+    self.UiInputs.LastMouseUpPos = {x = self.UiInputs.MouseX, y = self.UiInputs.MouseY}
+    self.UiInputs.LastMouseUpPosVGUI = {x = self.UiInputs.VguiMouseX, y = self.UiInputs.VguiMouseY}
+end
+
 function ENT:HandleInputsCreateMove(cmd)
+    if self:GetLocked() then return end
+
     local state = cmd:KeyDown(IN_ATTACK) or cmd:KeyDown(IN_ATTACK2)
-    if state then
+    if state and not self.Panel.ForceInputLock then
         self.Panel:SetKeyBoardInputEnabled(false)
     end
 
@@ -78,8 +58,12 @@ function ENT:HandleInputsCreateMove(cmd)
 
     if not state and self._clickState then
         self._clickState = nil
-        self:SimulateMouseClick()
+        self:OnMouseUp()
     elseif state then
+        if not self._clickState then
+            self:OnMouseDown()
+        end
+
         self._clickState = true
         cmd:RemoveKey(IN_ATTACK)
         cmd:RemoveKey(IN_ATTACK2)

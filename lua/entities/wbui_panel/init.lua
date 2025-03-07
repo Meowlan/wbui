@@ -9,10 +9,11 @@ include("shared.lua")
 
 function ENT:Initialize()
     self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
-    self:SetURL("https://ui.shadcn.com/")
+    self:SetURL("google.com")
     self:SetMaxDistance(500)
     self:SetHTMLSize(1024)
     self:SetAngle(0)
+    self:SetLocked(false)
     
     self:SetModel("models/hunter/plates/plate1x2.mdl")
     self:PhysicsInit(SOLID_VPHYSICS)

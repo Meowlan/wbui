@@ -34,7 +34,7 @@ The entity creates a DHTML panel on the client side and renders it onto a 3D sur
 - [ ] Synchronize panel state between players (shared browsing)
 - [x] Improve input support for text fields and form elements
 - [ ] Add better support for drag and hover operations
-- [ ] A lock setting to prevent any input onto the screen
+- [x] A lock setting to prevent any input onto the screen
 
 ## Credits 👏
 
