@@ -175,25 +175,26 @@ function ENT:Draw()
 		end
 
 		-- TODO: better DrawCircle function!!!
-		if mx and my and not self:GetLocked() then
-			local cursorSize = 5
-			local sinceMouseUp = SysTime() - (self.UiInputs.LastMouseUp or 0)
+		if not mx or not my then imgui.End3D2D() return end
+		if mx < 0 or my < 0 or mx > self.UiSize.x or my > self.UiSize.y then imgui.End3D2D() return end
 
-			surface.SetDrawColor(255, 255, 255, 255)
-			surface.DrawCircle(mx, my, self.UiInputs.MouseDown and cursorSize * 0.8 or cursorSize)
+		local cursorSize = 5
+		local sinceMouseUp = SysTime() - (self.UiInputs.LastMouseUp or 0)
 
-			if self.UiInputs.LastMouseUpPos and self.UiInputs.LastMouseUp then
-				local rippleProgress = math.Clamp(sinceMouseUp / 1.0, 0, 0.5)
-				local rippleSize = cursorSize * (1 + (2 * math.ease.OutQuad(rippleProgress)))
-				local rippleAlpha = 255 * (1 - math.ease.OutQuad(rippleProgress * 2))
+		surface.SetDrawColor(255, 255, 255, 255)
+		surface.DrawCircle(mx, my, self.UiInputs.MouseDown and cursorSize * 0.8 or cursorSize)
 
-				surface.SetDrawColor(255, 255, 255, rippleAlpha)
-				surface.DrawCircle(
-						self.UiInputs.LastMouseUpPosVGUI.x, 
-						self.UiInputs.LastMouseUpPosVGUI.y, 
-						rippleSize
-				)
-			end
+		if self.UiInputs.LastMouseUpPos and self.UiInputs.LastMouseUp then
+			local rippleProgress = math.Clamp(sinceMouseUp / 1.0, 0, 0.5)
+			local rippleSize = cursorSize * (1 + (2 * math.ease.OutQuad(rippleProgress)))
+			local rippleAlpha = 255 * (1 - math.ease.OutQuad(rippleProgress * 2))
+
+			surface.SetDrawColor(255, 255, 255, rippleAlpha)
+			surface.DrawCircle(
+					self.UiInputs.LastMouseUpPosVGUI.x, 
+					self.UiInputs.LastMouseUpPosVGUI.y, 
+					rippleSize
+			)
 		end
 
 		imgui.End3D2D()
