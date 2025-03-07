@@ -175,7 +175,7 @@ function ENT:Draw()
 		end
 
 		-- TODO: better DrawCircle function!!!
-		if not mx or not my then imgui.End3D2D() return end
+		if not mx or not my or self:GetLocked() then imgui.End3D2D() return end
 		if mx < 0 or my < 0 or mx > self.UiSize.x or my > self.UiSize.y then imgui.End3D2D() return end
 
 		local cursorSize = 5
