@@ -32,9 +32,11 @@ The entity creates a DHTML panel on the client side and renders it onto a 3D sur
 ## TODO 📝
 
 - [ ] Synchronize panel state between players (shared browsing)
+- [ ] Maybe a mouse lock for 3D games? Or a way to show the fullscreen, both seems bleh
+- [-] Add better support for drag and hover operations, still needs some tweaks
 - [x] Improve input support for text fields and form elements
-- [ ] Add better support for drag and hover operations
 - [x] A lock setting to prevent any input onto the screen
+- [x] Spatial audio, no idea on how that will work
 
 ## Credits 👏
 

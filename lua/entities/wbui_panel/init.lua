@@ -7,6 +7,8 @@ AddCSLuaFile("imgui.lua")
 
 include("shared.lua")
 
+resource.AddSingleFile("wbuiInputHandler.js")
+
 function ENT:Initialize()
     self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
     self:SetURL("google.com")

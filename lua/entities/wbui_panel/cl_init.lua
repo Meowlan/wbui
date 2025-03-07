@@ -3,298 +3,7 @@ include("cl_input.lua")
 include("cl_nav.lua")
 
 local imgui = include("imgui.lua")
-local inputHandlerJs = [[function setupInputElement(element) {
-   if (!element.hasAttribute("data-gmod-initialized")) {
-      element.setAttribute("data-gmod-initialized", "true");
-
-      element.addEventListener("click", function () {
-         if (!this.id) {
-            this.id = "gmod_input_" + Math.random().toString(36).substr(2, 9);
-         }
-
-         this.focus();
-         this.select();
-         gmod.inputLock();
-      });
-
-      element.addEventListener("submit", function () {
-         gmod.freeInputLock();
-      });
-
-      element.addEventListener("blur", function () {
-         gmod.freeInputLock();
-      });
-   }
-}
-
-function setupEditableElement(element) {
-   if (!element.hasAttribute("data-gmod-initialized")) {
-      element.setAttribute("data-gmod-initialized", "true");
-
-      element.addEventListener("click", function () {
-         if (!this.id) {
-            this.id =
-               "gmod_editable_" + Math.random().toString(36).substr(2, 9);
-         }
-
-         this.focus();
-         if (window.getSelection && document.createRange) {
-            const range = document.createRange();
-            range.selectNodeContents(this);
-            const selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-         }
-         gmod.inputLock();
-      });
-   }
-}
-
-function initializeExistingElements() {
-   document.querySelectorAll("input, textarea").forEach(setupInputElement);
-   document
-      .querySelectorAll("[contentEditable=true]")
-      .forEach(setupEditableElement);
-}
-
-function setupMutationObserver() {
-   const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-         if (!mutation.addedNodes || !mutation.addedNodes.length) return;
-
-         mutation.addedNodes.forEach((node) => {
-            if (node.nodeType !== Node.ELEMENT_NODE) return;
-
-            if (node.matches("input, textarea")) {
-               setupInputElement(node);
-            }
-
-            if (node.getAttribute("contentEditable") !== "true") return;
-
-            setupEditableElement(node);
-
-            if (!node.querySelectorAll) return;
-
-            node.querySelectorAll("input, textarea").forEach(setupInputElement);
-            node
-               .querySelectorAll("[contentEditable=true]")
-               .forEach(setupEditableElement);
-         });
-      });
-   });
-
-   observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-   });
-
-   return observer;
-}
-
-if (!window.gmod) {
-   window.gmod = {};
-}
-
-gmod.simulateMouseInput = function (type, x, y, button = 0) {
-   const eventOptions = {
-      view: window,
-      bubbles: true,
-      cancelable: true,
-      clientX: x,
-      clientY: y,
-      button: button,
-      buttons: button === 0 ? 1 : button === 1 ? 4 : 2,
-      screenX: x,
-      screenY: y,
-   };
-
-   const mouseEvent = new MouseEvent(type, eventOptions);
-   const targetElement = document.elementFromPoint(x, y);
-
-   if (!gmod.lastHoverElement) gmod.lastHoverElement = null;
-
-   if (targetElement) {
-      targetElement.dispatchEvent(mouseEvent);
-
-      if (type === "mousedown") {
-         gmod.lastDownElement = targetElement;
-         gmod.isDragging = true;
-      } else if (type === "mouseup") {
-         gmod.isDragging = false;
-
-         if (gmod.lastDownElement === targetElement) {
-            const clickEvent = new MouseEvent("click", eventOptions);
-            targetElement.dispatchEvent(clickEvent);
-         }
-
-         gmod.lastDownElement = null;
-         gmod.lastClickElement = targetElement;
-      } else if (type === "mousemove") {
-         if (targetElement !== gmod.lastHoverElement) {
-            if (gmod.lastHoverElement) {
-               const leaveEvent = new MouseEvent("mouseleave", {
-                  ...eventOptions,
-                  relatedTarget: targetElement,
-               });
-               gmod.lastHoverElement.dispatchEvent(leaveEvent);
-            }
-
-            const enterEvent = new MouseEvent("mouseenter", {
-               ...eventOptions,
-               relatedTarget: gmod.lastHoverElement,
-            });
-            targetElement.dispatchEvent(enterEvent);
-
-            gmod.lastHoverElement = targetElement;
-         }
-
-         const hoverEvent = new MouseEvent("mouseover", eventOptions);
-         targetElement.dispatchEvent(hoverEvent);
-
-         if (gmod.isDragging && gmod.lastDownElement) {
-            const dragEvent = new MouseEvent("drag", eventOptions);
-            gmod.lastDownElement.dispatchEvent(dragEvent);
-
-            const dragOverEvent = new MouseEvent("dragover", eventOptions);
-            targetElement.dispatchEvent(dragOverEvent);
-         }
-
-         const computedStyle = window.getComputedStyle(targetElement);
-         document.body.style.cursor = computedStyle.cursor;
-      }
-
-      return true;
-   } else {
-      if (type === "mousemove" && gmod.lastHoverElement) {
-         const leaveEvent = new MouseEvent("mouseleave", {
-            ...eventOptions,
-            relatedTarget: null,
-         });
-         gmod.lastHoverElement.dispatchEvent(leaveEvent);
-         gmod.lastHoverElement = null;
-
-         document.body.style.cursor = "default";
-      }
-
-      return false;
-   }
-};
-
-if (!gmod.lastDownElement) gmod.lastDownElement = null;
-if (!gmod.lastClickElement) gmod.lastClickElement = null;
-if (!gmod.lastHoverElement) gmod.lastHoverElement = null;
-if (!gmod.isDragging) gmod.isDragging = false;
-
-function createKeyboardToggle() {
-   // Create container div for the toggle button
-   const toggleContainer = document.createElement("div");
-   toggleContainer.id = "keyboard-toggle-container";
-   toggleContainer.style.position = "fixed";
-   toggleContainer.style.bottom = "20px";
-   toggleContainer.style.right = "20px";
-   toggleContainer.style.zIndex = "9999";
-   toggleContainer.style.width = "50px";
-   toggleContainer.style.height = "50px";
-   toggleContainer.style.borderRadius = "50%";
-   toggleContainer.style.backgroundColor = "#4354593F";
-   toggleContainer.style.boxShadow = "0 4px 8px rgba(0, 0, 0, 0.2)";
-   toggleContainer.style.cursor = "pointer";
-   toggleContainer.style.display = "flex";
-   toggleContainer.style.justifyContent = "center";
-   toggleContainer.style.alignItems = "center";
-   toggleContainer.style.transition = "background-color 0.3s ease";
-
-   // Add keyboard icon
-   toggleContainer.innerHTML = `
-    <svg stroke="currentColor" fill="white" stroke-width="0" viewBox="0 0 576 512" height="30px" width="30px" xmlns="http://www.w3.org/2000/svg">
-        <path d="M528 448H48c-26.51 0-48-21.49-48-48V112c0-26.51 21.49-48 48-48h480c26.51 0 48 21.49 48 48v288c0 26.51-21.49 48-48 48zM128 180v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm-336 96v-40c0-6.627-5.373-12-12-12H76c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12zm288 0v-40c0-6.627-5.373-12-12-12H172c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h232c6.627 0 12-5.373 12-12zm96 0v-40c0-6.627-5.373-12-12-12h-40c-6.627 0-12 5.373-12 12v40c0 6.627 5.373 12 12 12h40c6.627 0 12-5.373 12-12z"></path>
-    </svg>
-    `;
-
-   // Create tooltip to show current state
-   const tooltip = document.createElement("div");
-   tooltip.id = "keyboard-toggle-tooltip";
-   tooltip.innerText = "Keyboard: Unlocked";
-   tooltip.style.position = "absolute";
-   tooltip.style.top = "-40px";
-   tooltip.style.right = "0";
-   tooltip.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
-   tooltip.style.color = "white";
-   tooltip.style.padding = "5px 10px";
-   tooltip.style.borderRadius = "5px";
-   tooltip.style.fontSize = "14px";
-   tooltip.style.whiteSpace = "nowrap";
-   tooltip.style.opacity = "0";
-   tooltip.style.transition = "opacity 0.3s ease";
-
-   toggleContainer.appendChild(tooltip);
-
-   toggleContainer.addEventListener("mouseenter", () => {
-      tooltip.style.opacity = "1";
-   });
-
-   toggleContainer.addEventListener("mouseleave", () => {
-      tooltip.style.opacity = "0";
-   });
-
-   let isInputLocked = false;
-   let forceInputLocked = false;
-
-   toggleContainer.addEventListener("click", () => {
-      if (isInputLocked) {
-         isInputLocked = false;
-         forceInputLocked = false;
-
-			gmod.freeInputLock();
-			
-         toggleContainer.style.backgroundColor = "#4354593F";
-         tooltip.innerText = "Keyboard: Unlocked";
-      } else {
-			gmod.inputLock(true);
-
-         isInputLocked = true;
-         forceInputLocked = true;
-         toggleContainer.style.backgroundColor = "#F44336FF";
-         tooltip.innerText = "Keyboard: Locked";
-      }
-   });
-
-   // a bit sketchy
-   if (window.gmod) {
-      const originalInputLock = window.gmod.inputLock;
-      window.gmod.inputLock = function (...args) {
-         if (forceInputLocked) return;
-
-         isInputLocked = true;
-         toggleContainer.style.backgroundColor = "#F44336";
-         tooltip.innerText = "Keyboard: Locked";
-         return originalInputLock.apply(this, args);
-      };
-
-      const originalFreeInputLock = window.gmod.freeInputLock;
-      window.gmod.freeInputLock = function (...args) {
-         if (forceInputLocked) return;
-
-         isInputLocked = false;
-         toggleContainer.style.backgroundColor = "#4354593F";
-         tooltip.innerText = "Keyboard: Unlocked";
-         return originalFreeInputLock.apply(this, args);
-      };
-   }
-
-   document.body.appendChild(toggleContainer);
-   console.log("[WBUI] Keyboard toggle added");
-}
-
-initializeExistingElements();
-setupMutationObserver();
-
-window.onbeforeunload = function (event) {
-   window.gmod.freeInputLock();
-};
-
-console.log("[WBUI] Injected.");
-]]
+local inputHandlerJs = file.Read("addons/wbui/data/wbuiInputHandler.js", "GAME")
 
 ENT.SizeRatio = 10 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -502,7 +211,10 @@ function ENT:Draw()
 end
 
 function ENT:Think()
-	local inRange = self:GetPos():Distance(LocalPlayer():GetPos()) < self:GetMaxDistance()
+   local pos = self:WorldSpaceCenter()
+   local plyPos = LocalPlayer():EyePos()
+   local dist = pos:Distance(plyPos)
+	local inRange = dist < self:GetMaxDistance()
 
 	if inRange and not self.Panel then
 		self:OpenPage()
@@ -519,6 +231,27 @@ function ENT:Think()
 
 		LocalPlayer():EmitSound("ambient/water/drip" .. math.random(1, 3) .. ".wav", 75, 100)
 	end
+
+   -- TODO: Whole bunch of magic numbers, needs some settings
+   if self.Panel then
+      local plyDir = LocalPlayer():GetAimVector()
+      local dir = (pos - plyPos):GetNormalized()
+      local dot = plyDir:Dot(dir)
+
+      local angleFactor = math.Clamp((dot + 1) / 2, 0.1, 1)
+
+      local dist = pos:Distance(plyPos)
+      local maxDist = 500
+      local distanceFactor = math.Clamp((1 - (dist / maxDist))^2, 0, 1)
+
+      local finalVolume = math.Clamp(angleFactor * distanceFactor * 0.2, 0, 0.2)
+
+      self.Panel:RunJavascript(string.format([[
+         document.querySelectorAll('audio, video').forEach(el => {
+            el.volume = %f;
+         });
+      ]], finalVolume))
+   end
 end
 
 function ENT:OnRemove()
