@@ -5,7 +5,7 @@ include("cl_nav.lua")
 local imgui = include("imgui.lua")
 local inputHandlerJs = file.Read("addons/wbui/data/wbuiInputHandler.js", "GAME")
 
-ENT.SizeRatio = 10 -- This is just for other surface renders
+ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
 
 ENT.LastUpdate = 0
@@ -174,11 +174,10 @@ function ENT:Draw()
 			self.Mat = self:CreateWebMaterial()
 		end
 
-		-- TODO: better DrawCircle function!!!
 		if not mx or not my or self:GetLocked() then imgui.End3D2D() return end
 		if mx < 0 or my < 0 or mx > self.UiSize.x or my > self.UiSize.y then imgui.End3D2D() return end
 
-		local cursorSize = 5
+		local cursorSize = 50
 		local sinceMouseUp = SysTime() - (self.UiInputs.LastMouseUp or 0)
 
 		surface.SetDrawColor(255, 255, 255, 255)
