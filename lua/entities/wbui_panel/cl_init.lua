@@ -242,8 +242,9 @@ function ENT:Think()
 
       local dist = pos:Distance(plyPos)
       local maxDist = 500
-      local distanceFactor = math.Clamp((1 - (dist / maxDist))^2, 0, 1)
 
+		if dist <= 0 or dist >= maxDist then return end
+      local distanceFactor = math.Clamp((1 - (dist / maxDist))^2, 0, 1)
       local finalVolume = math.Clamp(angleFactor * distanceFactor * self:GetVolume() * 0.2, 0, 0.2)
 
       self.Panel:RunJavascript(string.format([[
