@@ -1,0 +1,6 @@
+{
+   "title": "WbUi",
+   "type": "tool",
+   "tags": ["fun", "scenic"],
+   "ignore": ["*.psd", "*.vcproj", "*.svn*", ".git/*", "*.md"]
+}

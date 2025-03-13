@@ -3,7 +3,7 @@ include("cl_input.lua")
 include("cl_nav.lua")
 
 local imgui = include("imgui.lua")
-local inputHandlerJs = file.Read("addons/wbui/data/wbuiInputHandler.js", "GAME")
+local inputHandlerJs = file.Read("addons/wbui/data_static/wbui_input_handler.txt", "GAME")
 
 ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -160,6 +160,16 @@ function ENT:Draw()
     	self:SimulateMouseInput("mousemove")
 		end
 
+		if self.Hovering and not self:GetLocked() then
+			hook.Add("HUDShouldDraw", "HideWeaponSelector", function(name)
+				if name == "CHudWeaponSelection" then
+					return false
+				end
+			end)
+		else
+			hook.Remove("HUDShouldDraw", "HideWeaponSelector")
+		end
+
 		if self.Mat then
 			surface.SetDrawColor(255, 255, 255, 255)
 			surface.SetMaterial(self.Mat)
@@ -197,16 +207,6 @@ function ENT:Draw()
 		end
 
 		imgui.End3D2D()
-	end
-
-	if self.Hovering and not self:GetLocked() then
-		hook.Add("HUDShouldDraw", "HideWeaponSelector", function(name)
-			if name == "CHudWeaponSelection" then
-				return false
-			end
-		end)
-	else
-		hook.Remove("HUDShouldDraw", "HideWeaponSelector")
 	end
 end
 
