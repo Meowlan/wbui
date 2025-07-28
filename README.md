@@ -1,4 +1,4 @@
-![Steam Subscriptions](https://img.shields.io/steam/subscriptions/3443791959)
+![Steam Subscriptions](https://img.shields.io/steam/subscriptions/3443791959?link=https%3A%2F%2Fsteamcommunity.com%2Fsharedfiles%2Ffiledetails%2F%3Fid%3D3443791959)
 
 
 # GMod Web Browser Panel
