@@ -3,7 +3,7 @@ include("cl_input.lua")
 include("cl_nav.lua")
 
 local imgui = include("imgui.lua")
-local inputHandlerJs = file.Read("addons/wbui/data_static/wbui_input_handler.txt", "GAME")
+local inputHandlerJs = file.Read("data_static/wbui_input_handler.txt", "GAME")
 
 ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -245,7 +245,7 @@ function ENT:Think()
 
 		if dist <= 0 or dist >= maxDist then return end
       local distanceFactor = math.Clamp((1 - (dist / maxDist))^2, 0, 1)
-      local finalVolume = math.Clamp(angleFactor * distanceFactor * self:GetVolume() * 0.2, 0, 0.2)
+      local finalVolume = math.Clamp(angleFactor * distanceFactor* 0.2, 0, 0.2) * self:GetVolume() 
 
       self.Panel:RunJavascript(string.format([[
          document.querySelectorAll('audio, video').forEach(el => {
