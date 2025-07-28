@@ -1,7 +1,10 @@
+![Steam Subscriptions](https://img.shields.io/steam/subscriptions/3443791959)
+
+
 # GMod Web Browser Panel
 
 An interactive web browser for Garry's Mod that allows players to view and interact with websites directly in-game.
-This addon enables players to spawn interactive web panels in the Garry's Mod world. Players can browse websites, click links, scroll through pages, and interact with web content while staying immersed in the game environment.
+This addon enables players to spawn interactive web panels inside of Gmod. Players can browse websites, click links, scroll through pages, and interact with web content while staying immersed in the game environment.
 
 ## Usage
 
