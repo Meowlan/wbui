@@ -3,7 +3,7 @@ ENT.Base = "base_gmodentity"
 
 ENT.PrintName = "Web Browser Panel"
 ENT.Author = "Meowlan"
-ENT.Information = "Interactive Web Browser Panel"
+ENT.Information = "Interactive Web Browser Panel\n Hold C -> Right Click for options."
 ENT.Category = "#spawnmenu.category.fun_games"
 
 ENT.Spawnable = true
@@ -12,6 +12,8 @@ ENT.AdminOnly = false
 ENT.Editable = true
 
 ENT.RenderGroup = RENDERGROUP_OPAQUE
+
+ENT.DefaultURL = "https://www.google.com"
 
 function ENT:SetupDataTables()
 	self:NetworkVar( "Int",    0, "HTMLSize", { KeyName = "htmlsize", Edit = { type = "Int", order = 1, min = 1, max = 4096 } } )

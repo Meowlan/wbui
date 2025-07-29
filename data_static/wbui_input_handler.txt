@@ -28,8 +28,7 @@ function setupEditableElement(element) {
 
       element.addEventListener("click", function () {
          if (!this.id) {
-            this.id =
-               "gmod_editable_" + Math.random().toString(36).substr(2, 9);
+            this.id = "gmod_editable_" + Math.random().toString(36).substr(2, 9);
          }
 
          this.focus();
@@ -76,6 +75,11 @@ function setupMutationObserver() {
                .forEach(setupEditableElement);
          });
       });
+
+      if (window.gmod.oldUrl !== window.location.href) {
+         window.gmod.urlChanged(window.location.href);
+         window.gmod.oldUrl = window.location.href;
+      }
    });
 
    observer.observe(document.body, {
@@ -278,7 +282,7 @@ function createKeyboardToggle() {
    }
 
    document.body.appendChild(toggleContainer);
-   console.log("[WBUI] Keyboard toggle added");
+   console.log("[WBUI.JS] Keyboard toggle added");
 }
 
 initializeExistingElements();
@@ -288,4 +292,4 @@ window.onbeforeunload = function (event) {
    window.gmod.freeInputLock();
 };
 
-console.log("[WBUI] Injected.");
+console.log("[WBUI.JS] Injected.");

@@ -1,5 +1,5 @@
 function ENT:SimulateMouseInput(type)
-    if not self.Panel or not self.UiInputs.MouseX or not self.UiInputs.MouseY then return end
+    if not IsValid(self.Panel) or not self.UiInputs.MouseX or not self.UiInputs.MouseY then return end
 
     local clickScript = string.format([[
         if (window.gmod && typeof window.gmod.simulateMouseInput === "function")
@@ -10,7 +10,7 @@ function ENT:SimulateMouseInput(type)
 end
 
 function ENT:SimulateScroll(delta)
-    if not self.Panel then return end
+    if not IsValid(self.Panel) then return end
 
     local scrollScript = string.format([[
         window.scrollBy(0, %d);

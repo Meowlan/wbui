@@ -11,6 +11,8 @@ ENT.ScrollSpeed = 50
 ENT.LastUpdate = 0
 ENT.NeedUpdate = false
 
+local devCvar = GetConVar("developer")
+
 function ENT:QueueUpdate()
 	self.LastUpdate = CurTime() + 1
 	self.NeedUpdate = true
@@ -42,23 +44,20 @@ function ENT:Setup()
 	self.UiSize = Vector(self.UiSize.y, self.UiSize.x, self.UiSize.z)
 
 	local aspectRatio = self.UiSize.x / self.UiSize.y
-	self.HTMLResolution = {self:GetHTMLSize() * aspectRatio, self:GetHTMLSize()}
 
-	if self:GetAngle() == 90 or self:GetAngle() == 270 then
+	local ang = self:GetAngle() % 360
+	if ang == 90 or ang == 270 then
 		self.HTMLResolution = {self:GetHTMLSize(), self:GetHTMLSize() * aspectRatio}
+	else
+		self.HTMLResolution = {self:GetHTMLSize() * aspectRatio, self:GetHTMLSize()}
 	end
 
 	self.Mat = nil
 	self:OpenPage()
 end
 
--- TODO: Dont forget to remove this
-if vgui.GetKeyboardFocus() then
-	vgui.GetKeyboardFocus():Remove()
-end
-
 function ENT:OpenPage()
-	if self.Panel then
+	if IsValid(self.Panel) then
 		self.Panel:Remove()
 		self.Panel = nil
 	end
@@ -71,7 +70,7 @@ function ENT:OpenPage()
 	self.Panel:SetMouseInputEnabled(false)
 
 	self.Panel.OnBeginLoadingDocument = function(self, url)
-		self.Panel.URL = url
+		self.URL = url
 	end
 
 	self.Panel.OnDocumentReady = function(self, url)
@@ -94,6 +93,10 @@ function ENT:OpenPage()
 			self.ForceInputLock = false
 		end)
 
+		self.Panel:AddFunction( "gmod", "urlChanged", function(url)
+			self.URL = url
+		end)
+
 		self.Panel:RunJavascript("window.createKeyboardToggle();")
 	end
 
@@ -101,14 +104,18 @@ function ENT:OpenPage()
 	   self.Panel:OpenURL(targetURL) -- Otherwise hrefs to new pages dont open
 	end
 
-	-- self.Panel.ConsoleMessage = function(self, message) end
+	self.Panel.ConsoleMessage = function(self, message) 
+		if devCvar:GetInt() > 0 then
+			MsgC(message, "\n")
+		end
+	end
 end
 
 function ENT:CreateWebMaterial()
-	if not self.Panel then return nil end
+	if not IsValid(self.Panel) then return end
 	
 	local html_mat = self.Panel:GetHTMLMaterial()
-	if not html_mat then return nil end
+	if not html_mat then return end
 
 	local scale_x, scale_y = 2048, 2048
 	local matdata = {
@@ -132,7 +139,8 @@ function ENT:Draw()
 		if mx and my then
 			local rotatedX, rotatedY
 
-			local swapDimensions = (math.abs(self:GetAngle()) == 90 or math.abs(self:GetAngle()) == 270)
+			local ang = self:GetAngle() % 360
+			local swapDimensions = ang == 90 or ang == 270
 			local uiWidth = swapDimensions and self.UiSize.y or self.UiSize.x
 			local uiHeight = swapDimensions and self.UiSize.x or self.UiSize.y
 
@@ -216,9 +224,9 @@ function ENT:Think()
    local dist = pos:Distance(plyPos)
 	local inRange = dist < self:GetMaxDistance()
 
-	if inRange and not self.Panel then
+	if inRange and not IsValid(self.Panel) then
 		self:OpenPage()
-	elseif not inRange and self.Panel then
+	elseif not inRange and IsValid(self.Panel) then
 		self.LastUrl = self.Panel.URL
 		self.Panel:Remove()
 		self.Panel = nil
@@ -233,7 +241,7 @@ function ENT:Think()
 	end
 
    -- TODO: Whole bunch of magic numbers, needs some settings
-   if self.Panel then
+   if IsValid(self.Panel) then
       local plyDir = LocalPlayer():GetAimVector()
       local dir = (pos - plyPos):GetNormalized()
       local dot = plyDir:Dot(dir)

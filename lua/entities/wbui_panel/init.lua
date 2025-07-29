@@ -11,7 +11,7 @@ resource.AddSingleFile("addons/wbui/data_static/wbui_input_handler.txt")
 
 function ENT:Initialize()
     self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
-    self:SetURL("google.com")
+    self:SetURL(self.DefaultURL)
     self:SetMaxDistance(500)
     self:SetHTMLSize(1024)
     self:SetAngle(0)
