@@ -23,7 +23,7 @@ function ENT:Initialize()
 
 	self:NetworkVarNotify("Angle", self.QueueUpdate)
 	self:NetworkVarNotify("HTMLSize", self.QueueUpdate)
-	self:NetworkVarNotify("URL", self.QueueUpdate)
+	self:NetworkVarNotify("TargetURL", self.QueueUpdate)
 
 	self:NetworkVarNotify("ScreenModel", function(ent, key, old, new)
         ent:SetModel(new)
@@ -35,6 +35,15 @@ function ENT:Initialize()
 	self:Setup()
 
 	hook.Add("CreateMove", self, self.HandleInputsCreateMove)
+	hook.Add("Think", self, function()
+		if not IsValidWbuiPanel(self) then return end
+
+		if input.IsKeyDown(KEY_F8) then
+			self.Panel:SetKeyboardInputEnabled(false)
+			self.Panel:SetMouseInputEnabled(false)
+			self.Panel:SetAlpha(0)
+		end
+	end)
 end
 
 function ENT:Setup()
@@ -64,7 +73,7 @@ function ENT:OpenPage()
 
 	self.Panel = vgui.Create("DHTML")
 	self.Panel:SetSize(unpack(self.HTMLResolution))
-	self.Panel:OpenURL(self:GetURL())
+	self.Panel:OpenURL(self:GetTargetURL())
 	
 	self.Panel:SetAlpha(0)
 	self.Panel:SetMouseInputEnabled(false)
@@ -78,26 +87,27 @@ function ENT:OpenPage()
 		self:RunJavascript(inputHandlerJs)
 	end
 
+	-- wtf is going on here with self 😭
 	self.Panel.OnFinishLoadingDocument = function(self, url)
 		self.Panel:AddFunction( "gmod", "inputLock", function(force)
 			self.Panel:MakePopup()
 			self.Panel:SetMouseInputEnabled(false)
 
-			self.ForceInputLock = force
+			self.Panel.ForceInputLock = force
 		end)
 
 		self.Panel:AddFunction( "gmod", "freeInputLock", function()
+			if self.Panel.ForceInputLock then return end
+
 			self.Panel:SetMouseInputEnabled(false)
 			self.Panel:SetKeyboardInputEnabled(false)
-
-			self.ForceInputLock = false
 		end)
 
 		self.Panel:AddFunction( "gmod", "urlChanged", function(url)
 			self.URL = url
 		end)
 
-		self.Panel:RunJavascript("window.createKeyboardToggle();")
+		-- self.Panel:RunJavascript("window.createKeyboardToggle();")
 	end
 
 	self.Panel.OnChildViewCreated = function(self, sourceURL, targetURL)

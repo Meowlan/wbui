@@ -17,7 +17,7 @@ ENT.DefaultURL = "https://www.google.com"
 
 function ENT:SetupDataTables()
 	self:NetworkVar( "Int",    0, "HTMLSize", { KeyName = "htmlsize", Edit = { type = "Int", order = 1, min = 1, max = 4096 } } )
-	self:NetworkVar( "String", 1, "URL", { KeyName = "url", Edit = { type = "String", order = 2 } } )
+	self:NetworkVar( "String", 1, "TargetURL", { KeyName = "TargetURL", Edit = { type = "String", order = 2 } } )
 	self:NetworkVar( "String", 2, "ScreenModel", { KeyName = "screenmodel", Edit = { type = "String", order = 5 } } )
 	self:NetworkVar( "Int",    3, "Angle", { KeyName = "angle", Edit = { type = "Int", order = 3, min = 0, max = 360 } } )
 	self:NetworkVar( "Float",  4, "MaxDistance", { KeyName = "maxdistance", Edit = { type = "Float", order = 4, min = 1, max = 10000 } } )

@@ -5,9 +5,9 @@ local cmds = {
     {"wbui_refresh", "Refresh", function(panel) panel:Refresh() end, "icon16/arrow_refresh.png"},
     {"wbui_url", "Set URL", function(panel, url) if url then panel:NavigateTo(url) else panel:UrlPrompt() end end, "icon16/world.png"},
     {"wbui_copy_url", "Copy URL", function(panel) panel:UrlCopy() end, "icon16/page_copy.png"},
+    {"wbui_fullscreen", "Fullscreen", function(panel) panel:Fullscreen() end, "icon16/application_view_tile.png"},
 }
 
-local i = 0
 for _, cmd in ipairs(cmds) do
     local cmd, desc, action, icon = unpack(cmd)
 
@@ -20,38 +20,32 @@ for _, cmd in ipairs(cmds) do
 
         action(ent, unpack(args))
     end, nil, desc)
+end
 
-    properties.Add(cmd, {
-        PrependSpacer = i == 0,
-        MenuLabel = desc,
-        MenuIcon = icon,
-        Order = 100000+i, -- why is the edit properties order 90001???
-        Filter = function(self, ent, ply)
-            if not IsValid(ent) then return false end
-            if ent:GetClass() ~= "wbui_panel" then return false end
-            
-            return true
-        end,
-        Action = function(self,ent)
-            action(ent)
-        end,
-        MenuOpen = function(self, option, ent)
-            if not IsValid(ent) then return end
-            if ent:GetClass() ~= "wbui_panel" then return end
-            if self.InternalName ~= "wbui_url" then return end
+-- Freaky ahhh way to add our own ui to the context menu
+properties.Add("test", {
+    PrependSpacer = true,
+    MenuLabel = "test",
+    Order = 1000010,
+    Filter = function(self, ent, ply)
+        return IsValid(ent) and ent:GetClass() == "wbui_panel"
+    end,
+    Action = function(self,ent) end,
+    MenuOpen = function(self, option, ent)
+        if not IsValid(ent) or ent:GetClass() ~= "wbui_panel" then return end
+        if self.InternalName ~= "test" then return end
 
-            local paint = option.Paint
-            option.Paint = function(self, w, h)
-                local url = ent.Panel and ent.Panel.URL or ent.DefaultURL
-                self:SetText("URL - " .. string.sub(url, 1, 50) .. (string.len(url) > 50 and "..." or ""))
-                self:SetTooltip(url)
+        local Control = vgui.Create( "WbuiControl", option:GetParent() )
+        -- Control:SetSize( 300, 200 )
+        Control:SetEntity(ent)
+        Control:SetWidth( 300 )
 
-                paint(self, w, h)
-            end
-        end
-    })
+        option:Remove()
+    end
+})
 
-    i=i+1
+function IsValidWbuiPanel(ent)
+    return IsValid(ent) and ent.GetClass and ent:GetClass() == "wbui_panel" and IsValid(ent.Panel)
 end
 
 function WbuiPrint(...)
