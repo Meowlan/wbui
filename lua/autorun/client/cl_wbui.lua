@@ -1,3 +1,5 @@
+include("wbui/cef_detection.lua")
+
 local cmds = {
     {"wbui_forward", "Forward", function(panel) panel:NavigateForward() end, "icon16/arrow_right.png"},
     {"wbui_back", "Back", function(panel) panel:NavigateBack() end, "icon16/arrow_left.png"},

@@ -6,6 +6,9 @@ local imgui = include("imgui-wbui.lua")
 local inputHandlerJs = file.Read("data_static/wbui_input_handler.txt", "GAME")
 local fullscreenPolyfillJs = file.Read("data_static/wbui_fullscreen_polyfill.txt", "GAME")
 
+assert(inputHandlerJs, "Failed to load input handler JS")
+assert(fullscreenPolyfillJs, "Failed to load fullscreen polyfill JS")
+
 ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
 
@@ -72,10 +75,19 @@ function ENT:Setup()
 	self:OpenPage()
 end
 
+ALREADY_WARNED = ALREADY_WARNED or false
+
 function ENT:OpenPage()
 	if IsValid(self.Panel) then
 		self.Panel:Remove()
 		self.Panel = nil
+	end
+
+	if not ALREADY_WARNED and not CEFCodecFixAvailable then
+		ALREADY_WARNED = true
+
+		-- it is highly recommend to use WBUI with cefcodecfix, https://solsticegamestudios.com/fixmedia/
+		chat.AddText(Color(136, 223, 218), "[WBUI]", Color(255, 100, 100), " It seems like you are not using CEFCodecFix! It is highly recommended to use WBUI with it for maximum compatibility, https://solsticegamestudios.com/fixmedia/")
 	end
 
 	self.Panel = vgui.Create("DHTML")
