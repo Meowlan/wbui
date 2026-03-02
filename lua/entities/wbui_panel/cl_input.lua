@@ -70,7 +70,7 @@ function ENT:HandleInputsCreateMove(cmd)
 
     local leftState = cmd:KeyDown(IN_ATTACK) or cmd:KeyDown(IN_USE)
     local rightState = cmd:KeyDown(IN_ATTACK2)
-    if (leftState or rightState) and not self.Panel.ForceInputLock then
+    if IsValid(self) and IsValid(self.Panel) and (leftState or rightState) and not self.Panel.ForceInputLock then
         self.Panel:SetKeyBoardInputEnabled(false)
     end
 

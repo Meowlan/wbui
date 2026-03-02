@@ -175,6 +175,7 @@ function ENT:Draw()
 	self:DrawModel()
 
 	if IsValid(self.Panel) and imgui.Entity3D2D(self, self.UiOffset, Angle(0, 90, 0), 1 / self.SizeRatio) then
+		if self.Hovering == nil then self.Hovering = false end
 		local mx, my = imgui.CursorPos()
 		self.UiInputs.VguiMouseX, self.UiInputs.VguiMouseY = mx, my
 		
@@ -256,6 +257,7 @@ function ENT:Draw()
 		if not mx or not my or self:GetLocked() then imgui.End3D2D() return end
 		if mx < 0 or my < 0 or mx > self.UiSize.x or my > self.UiSize.y then imgui.End3D2D() return end
 
+
 		local cursorSize = 50
 		local sinceMouseUp = SysTime() - (self.UiInputs.LastMouseUp or 0)
 
@@ -276,6 +278,12 @@ function ENT:Draw()
 		end
 
 		imgui.End3D2D()
+	else
+		-- Entity3D2D returned false (not in view / panel invalid): ensure hover cleanup runs
+		if self.Hovering then
+			self.Hovering = false
+			hook.Remove("HUDShouldDraw", "HideWeaponSelector")
+		end
 	end
 end
 
@@ -292,6 +300,8 @@ function ENT:Think()
 		self.Panel:Remove()
 		self.Panel = nil
 		self.Mat = nil
+		self.Hovering = false
+		hook.Remove("HUDShouldDraw", "HideWeaponSelector")
 	end
 
 	if self.NeedUpdate and self.LastUpdate < CurTime()  then
