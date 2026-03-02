@@ -56,6 +56,7 @@ function ENT:LockMouse()
     if not self.Panel:IsPopup() then self.Panel:MakePopup() end
 
     self.Panel:SetMouseInputEnabled(true)
+    self.Panel:MouseCapture(true)
     self.Panel:SetKeyboardInputEnabled(oldKeyboardInput)
     self.Panel.ForceInputLock = true
 

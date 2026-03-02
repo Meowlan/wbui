@@ -3,7 +3,7 @@ AddCSLuaFile("cl_input.lua")
 AddCSLuaFile("cl_nav.lua")
 AddCSLuaFile("shared.lua")
 
-AddCSLuaFile("imgui.lua")
+AddCSLuaFile("imgui-wbui.lua")
 
 include("shared.lua")
 
