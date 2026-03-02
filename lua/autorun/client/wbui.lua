@@ -48,6 +48,25 @@ function IsValidWbuiPanel(ent)
     return IsValid(ent) and ent.GetClass and ent:GetClass() == "wbui_panel" and IsValid(ent.Panel)
 end
 
+-- Show an unobtrusive "F8 to unlock" hint whenever a wbui_panel has keyboard focus
+hook.Add("HUDPaint", "wbui_f8_hint", function()
+    local focused = vgui.GetKeyboardFocus()
+    if not IsValid(focused) or not focused._isWbui then return end
+
+    local msg = "F8 to unlock"
+    surface.SetFont("DermaDefault")
+    local tw, th = surface.GetTextSize(msg)
+    local pw, ph = tw + 16, th + 8
+    local px = math.floor((ScrW() - pw) / 2)
+    local py = ScrH() - ph - 24
+    draw.RoundedBox(5, px, py, pw, ph, Color(20, 20, 30, 170))
+    surface.SetDrawColor(50, 180, 100, 120)
+    surface.DrawOutlinedRect(px, py, pw, ph, 1)
+    surface.SetTextColor(190, 240, 190, 210)
+    surface.SetTextPos(px + 8, py + 4)
+    surface.DrawText(msg)
+end)
+
 function WbuiPrint(...)
 	MsgC(Color(136, 223, 218), "[WBUI] ", Color(187, 187, 187), ..., "\n")
 end

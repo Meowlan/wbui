@@ -300,42 +300,26 @@ function PANEL:Init()
         if sld._dragging then SliderSetFromMouse(sld) end
     end
 
-    -- Input lock buttons (right side)
-    self.LockKeyboardBtn = MakeToggleBtn(
+    -- Combined input lock button (right side)
+    self.LockInputBtn = MakeToggleBtn(
         self.BottomRow,
-        "icon16/keyboard.png", "icon16/keyboard_delete.png",
-        "Lock Keyboard Input", "Unlock Keyboard Input",
+        "icon16/lock_open.png", "icon16/lock.png",
+        "Lock Mouse & Keyboard", "Unlock Mouse & Keyboard",
         function(btn, newState)
             if not IsValidWbuiPanel(self.Entity) then return end
             if newState then
+                self.Entity:LockMouse()
                 self.Entity:LockKeyboard()
             else
+                self.Entity:UnlockMouse()
                 self.Entity:UnlockKeyboard()
             end
             btn:SetActive(newState)
         end
     )
-    self.LockKeyboardBtn:Dock(RIGHT)
-    self.LockKeyboardBtn:SetWide(26)
-    self.LockKeyboardBtn:DockMargin(2, 0, 0, 0)
-
-    self.LockMouseBtn = MakeToggleBtn(
-        self.BottomRow,
-        "icon16/mouse.png", "icon16/mouse_delete.png",
-        "Lock Mouse Input", "Unlock Mouse Input",
-        function(btn, newState)
-            if not IsValidWbuiPanel(self.Entity) then return end
-            if newState then
-                self.Entity:LockMouse()
-            else
-                self.Entity:UnlockMouse()
-            end
-            btn:SetActive(newState)
-        end
-    )
-    self.LockMouseBtn:Dock(RIGHT)
-    self.LockMouseBtn:SetWide(26)
-    self.LockMouseBtn:DockMargin(2, 0, 0, 0)
+    self.LockInputBtn:Dock(RIGHT)
+    self.LockInputBtn:SetWide(26)
+    self.LockInputBtn:DockMargin(2, 0, 0, 0)
 
     -- "Vol" label
     local volLabel = vgui.Create("DLabel", self.BottomRow)

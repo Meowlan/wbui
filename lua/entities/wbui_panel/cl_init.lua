@@ -78,6 +78,7 @@ function ENT:OpenPage()
 	end
 
 	self.Panel = vgui.Create("DHTML")
+	self.Panel._isWbui = true
 	self.Panel:SetSize(unpack(self.HTMLResolution))
 	self.Panel:OpenURL(self:GetTargetURL())
 	

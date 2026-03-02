@@ -59,8 +59,6 @@ function ENT:LockMouse()
     self.Panel:MouseCapture(true)
     self.Panel:SetKeyboardInputEnabled(oldKeyboardInput)
     self.Panel.ForceInputLock = true
-
-    LockHint()
 end
 
 function ENT:LockKeyboard()
@@ -70,8 +68,6 @@ function ENT:LockKeyboard()
     self.Panel:SetKeyboardInputEnabled(true)
     self.Panel:SetMouseInputEnabled(oldMouseInput)
     self.Panel.ForceInputLock = true
-
-    LockHint()
 end
 
 function ENT:UnlockMouse()
