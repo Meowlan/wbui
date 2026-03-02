@@ -4,6 +4,7 @@ include("cl_nav.lua")
 
 local imgui = include("imgui-wbui.lua")
 local inputHandlerJs = file.Read("data_static/wbui_input_handler.txt", "GAME")
+local fullscreenPolyfillJs = file.Read("data_static/wbui_fullscreen_polyfill.txt", "GAME")
 
 ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -90,6 +91,8 @@ function ENT:OpenPage()
 	end
 
 	self.Panel.OnDocumentReady = function(self, url)
+		-- Emulate Fullscreen API (GMod CEF does not support native fullscreen)
+		self:RunJavascript(fullscreenPolyfillJs)
 		-- Inject javascript to detect forms or anything that requires keyboard input
 		self:RunJavascript(inputHandlerJs)
 	end
