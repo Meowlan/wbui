@@ -1,3 +1,6 @@
+-- https://github.com/wyozi-gmod/imgui
+-- Thank you kindly wyozi
+
 local imgui = {}
 
 imgui.skin = {
@@ -34,25 +37,33 @@ local function shouldAcceptInput()
 		return false
 	end
 
-	-- don't process input if we're doing VGUI stuff (and not in context menu)
-	if vgui.CursorVisible() and vgui.GetHoveredPanel() ~= g_ContextMenu then
-		return false
-	end
-
 	return true
 end
 
 imgui.Hook("PreRender", "Input", function()
 	-- calculate mouse state
 	if shouldAcceptInput() then
-		local useBind = input.LookupBinding("+use", true)
-		local attackBind = input.LookupBinding("+attack", true)
-		local USE = useBind and input.GetKeyCode(useBind)
-		local ATTACK = attackBind and input.GetKeyCode(attackBind)
-
 		local wasPressing = gState.pressing
-		gState.pressing = (USE and input.IsButtonDown(USE)) or (ATTACK and input.IsButtonDown(ATTACK))
+		if vgui.CursorVisible() then
+			-- cursor visible (e.g. holding C): detect left/right mouse directly
+			gState.pressing = input.IsMouseDown(MOUSE_LEFT) or input.IsMouseDown(MOUSE_RIGHT)
+		else
+			local useBind = input.LookupBinding("+use", true)
+			local attackBind = input.LookupBinding("+attack", true)
+			local USE = useBind and input.GetKeyCode(useBind)
+			local ATTACK = attackBind and input.GetKeyCode(attackBind)
+			gState.pressing = (USE and input.IsButtonDown(USE)) or (ATTACK and input.IsButtonDown(ATTACK))
+		end
 		gState.pressed = not wasPressing and gState.pressing
+	end
+end)
+
+-- suppress weapon fire via CreateMove when cursor is visible and hovering a panel
+-- gState.mx/my are set during the render phase so they reflect the previous frame
+hook.Add("CreateMove", "IMGUI / SuppressAttack", function(cmd)
+	if vgui.CursorVisible() and gState.mx and gState.my then
+		local buttons = cmd:GetButtons()
+		cmd:SetButtons(bit.band(buttons, bit.bnot(IN_ATTACK + IN_ATTACK2)))
 	end
 end)
 
@@ -139,20 +150,22 @@ function imgui.Start3D2D(pos, angles, scale, distanceHide, distanceFadeStart)
 	gState.angles = angles
 	gState.scale = scale
 
+	gState._oldToneMappingScale = render.GetToneMappingScaleLinear()
+	render.SetToneMappingScaleLinear(Vector(1, 1, 1))
 	cam.Start3D2D(pos, angles, scale)
 
 	-- calculate mousepos
-	if not vgui.CursorVisible() or vgui.IsHoveringWorld() then
-		local tr = localPlayer:GetEyeTrace()
-		local eyepos = tr.StartPos
-		local eyenormal
-
-		if vgui.CursorVisible() and vgui.IsHoveringWorld() then
+	do
+		local eyepos, eyenormal
+		if vgui.CursorVisible() then
+			-- cursor is visible (e.g. holding C), use actual mouse position for ray
+			eyepos = localPlayer:EyePos()
 			eyenormal = gui.ScreenToVector(gui.MousePos())
 		else
+			local tr = localPlayer:GetEyeTrace()
+			eyepos = tr.StartPos
 			eyenormal = tr.Normal
 		end
-
 		local planeNormal = angles:Up()
 
 		local hitPos = util.IntersectRayWithPlane(eyepos, eyenormal, pos, planeNormal)
@@ -179,11 +192,6 @@ function imgui.Start3D2D(pos, angles, scale, distanceHide, distanceFadeStart)
 
 			if _devMode then gState._devInputBlocker = "not looking at plane" end
 		end
-	else
-		gState.mx = nil
-		gState.my = nil
-
-		if _devMode then gState._devInputBlocker = "not hovering world" end
 	end
 
 	if _devMode then gState._renderStarted = SysTime() end
@@ -354,6 +362,8 @@ function imgui.End3D2D()
 
 		gState.rendering = false
 		cam.End3D2D()
+		render.SetToneMappingScaleLinear(gState._oldToneMappingScale)
+		gState._oldToneMappingScale = nil
 		render.SetBlend(1)
 		surface.SetAlphaMultiplier(1)
 

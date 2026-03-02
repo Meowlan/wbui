@@ -1,0 +1,165 @@
+// GMod CEF Fullscreen Emulation Polyfill
+// Intercepts the standard Fullscreen API and emulates it via CSS,
+// since GMod's embedded CEF does not support native fullscreen.
+(function () {
+   if (window.__gmodFullscreenPolyfill) return;
+   window.__gmodFullscreenPolyfill = true;
+
+   let _fullscreenElement = null;
+   let _savedStyles = null;
+   let _styleTag = null;
+
+   function getStyleTag() {
+      if (!_styleTag) {
+         _styleTag = document.createElement("style");
+         _styleTag.id = "__gmod_fullscreen_style";
+         document.head.appendChild(_styleTag);
+      }
+      return _styleTag;
+   }
+
+   function dispatchChange(target) {
+      [
+         "fullscreenchange",
+         "webkitfullscreenchange",
+         "mozfullscreenchange",
+         "MSFullscreenChange",
+      ].forEach(function (name) {
+         target.dispatchEvent(new Event(name, { bubbles: true }));
+         document.dispatchEvent(new Event(name, { bubbles: false }));
+      });
+   }
+
+   function updateDocumentProperties() {
+      var el = _fullscreenElement;
+      [
+         "fullscreenElement",
+         "webkitFullscreenElement",
+         "mozFullScreenElement",
+         "msFullscreenElement",
+      ].forEach(function (prop) {
+         try {
+            Object.defineProperty(document, prop, {
+               get: function () { return el; },
+               configurable: true,
+            });
+         } catch (e) {}
+      });
+   }
+
+   function enterFullscreen(element) {
+      if (_fullscreenElement === element) return Promise.resolve();
+
+      // Save every inline style property we will override
+      _savedStyles = {
+         element: element,
+         position:        element.style.position,
+         top:             element.style.top,
+         left:            element.style.left,
+         width:           element.style.width,
+         height:          element.style.height,
+         zIndex:          element.style.zIndex,
+         margin:          element.style.margin,
+         padding:         element.style.padding,
+         boxSizing:       element.style.boxSizing,
+         transform:       element.style.transform,
+         transformOrigin: element.style.transformOrigin,
+         overflow:        element.style.overflow,
+      };
+
+      element.style.position        = "fixed";
+      element.style.top             = "0";
+      element.style.left            = "0";
+      element.style.width           = "100vw";
+      element.style.height          = "100vh";
+      element.style.zIndex          = "2147483647";
+      element.style.margin          = "0";
+      element.style.padding         = "0";
+      element.style.boxSizing       = "border-box";
+      element.style.overflow        = "hidden";
+      element.style.transform       = "";
+      element.style.transformOrigin = "";
+
+      // Suppress scrollbars on the rest of the page while fullscreen is active
+      getStyleTag().textContent = ":root { overflow: hidden !important; }";
+
+      _fullscreenElement = element;
+      updateDocumentProperties();
+
+      setTimeout(function () { dispatchChange(element); }, 0);
+      return Promise.resolve();
+   }
+
+   function exitFullscreen() {
+      if (!_fullscreenElement) return Promise.resolve();
+
+      var element = _fullscreenElement;
+
+      if (_savedStyles && _savedStyles.element === element) {
+         element.style.position        = _savedStyles.position;
+         element.style.top             = _savedStyles.top;
+         element.style.left            = _savedStyles.left;
+         element.style.width           = _savedStyles.width;
+         element.style.height          = _savedStyles.height;
+         element.style.zIndex          = _savedStyles.zIndex;
+         element.style.margin          = _savedStyles.margin;
+         element.style.padding         = _savedStyles.padding;
+         element.style.boxSizing       = _savedStyles.boxSizing;
+         element.style.transform       = _savedStyles.transform;
+         element.style.transformOrigin = _savedStyles.transformOrigin;
+         element.style.overflow        = _savedStyles.overflow;
+         _savedStyles = null;
+      }
+
+      if (_styleTag) {
+         _styleTag.textContent = "";
+      }
+
+      _fullscreenElement = null;
+      updateDocumentProperties();
+
+      setTimeout(function () { dispatchChange(element); }, 0);
+      return Promise.resolve();
+   }
+
+   // Expose fullscreenEnabled as true
+   [
+      "fullscreenEnabled",
+      "webkitFullscreenEnabled",
+      "mozFullScreenEnabled",
+      "msFullscreenEnabled",
+   ].forEach(function (prop) {
+      try {
+         Object.defineProperty(document, prop, {
+            get: function () { return true; },
+            configurable: true,
+         });
+      } catch (e) {}
+   });
+
+   // Set initial fullscreenElement to null
+   updateDocumentProperties();
+
+   // Override exitFullscreen on document
+   document.exitFullscreen          = exitFullscreen;
+   document.webkitExitFullscreen    = exitFullscreen;
+   document.mozCancelFullScreen     = exitFullscreen;
+   document.msExitFullscreen        = exitFullscreen;
+
+   // Override requestFullscreen on Element.prototype
+   var req = function () { return enterFullscreen(this); };
+   Element.prototype.requestFullscreen          = req;
+   Element.prototype.webkitRequestFullscreen    = req;
+   Element.prototype.webkitRequestFullScreen    = req;
+   Element.prototype.mozRequestFullScreen       = req;
+   Element.prototype.msRequestFullscreen        = req;
+
+   // Mirror native behaviour: Escape exits fullscreen
+   document.addEventListener("keydown", function (e) {
+      if ((e.key === "Escape" || e.keyCode === 27) && _fullscreenElement) {
+         exitFullscreen();
+      }
+   }, true);
+
+   console.log("[WBUI.JS] Fullscreen polyfill installed.");
+})();

@@ -2,8 +2,9 @@ include("shared.lua")
 include("cl_input.lua")
 include("cl_nav.lua")
 
-local imgui = include("imgui.lua")
+local imgui = include("imgui-wbui.lua")
 local inputHandlerJs = file.Read("data_static/wbui_input_handler.txt", "GAME")
+local fullscreenPolyfillJs = file.Read("data_static/wbui_fullscreen_polyfill.txt", "GAME")
 
 ENT.SizeRatio = 100 -- This is just for other surface renders
 ENT.ScrollSpeed = 50
@@ -23,7 +24,7 @@ function ENT:Initialize()
 
 	self:NetworkVarNotify("Angle", self.QueueUpdate)
 	self:NetworkVarNotify("HTMLSize", self.QueueUpdate)
-	self:NetworkVarNotify("URL", self.QueueUpdate)
+	self:NetworkVarNotify("TargetURL", self.QueueUpdate)
 
 	self:NetworkVarNotify("ScreenModel", function(ent, key, old, new)
         ent:SetModel(new)
@@ -35,6 +36,21 @@ function ENT:Initialize()
 	self:Setup()
 
 	hook.Add("CreateMove", self, self.HandleInputsCreateMove)
+	hook.Add("Think", self, function()
+			if not IsValidWbuiPanel(self) then return end
+
+			if input.IsKeyDown(KEY_F8) or input.IsKeyDown(KEY_ESCAPE) then
+				self.Panel:SetKeyboardInputEnabled(false)
+				self.Panel:SetMouseInputEnabled(false)
+				self.Panel:SetAlpha(0)
+			end
+
+			-- when cursor is visible, IN_ATTACK is never set in usercmd so
+			-- we must detect clicks via raw input.IsMouseDown here instead
+			if vgui.CursorVisible() then
+				self:HandleCursorVisibleInput()
+			end
+	end)
 end
 
 function ENT:Setup()
@@ -63,8 +79,9 @@ function ENT:OpenPage()
 	end
 
 	self.Panel = vgui.Create("DHTML")
+	self.Panel._isWbui = true
 	self.Panel:SetSize(unpack(self.HTMLResolution))
-	self.Panel:OpenURL(self:GetURL())
+	self.Panel:OpenURL(self:GetTargetURL())
 	
 	self.Panel:SetAlpha(0)
 	self.Panel:SetMouseInputEnabled(false)
@@ -74,30 +91,38 @@ function ENT:OpenPage()
 	end
 
 	self.Panel.OnDocumentReady = function(self, url)
+		-- Emulate Fullscreen API (GMod CEF does not support native fullscreen)
+		self:RunJavascript(fullscreenPolyfillJs)
 		-- Inject javascript to detect forms or anything that requires keyboard input
 		self:RunJavascript(inputHandlerJs)
 	end
 
+	-- wtf is going on here with self 😭
 	self.Panel.OnFinishLoadingDocument = function(self, url)
 		self.Panel:AddFunction( "gmod", "inputLock", function(force)
+			-- Snapshot mouse-lock state before MakePopup() potentially changes it,
+			-- so that a textbox click doesn't silently disable the user's mouse lock.
+			local mouseLocked = self.Panel:IsMouseInputEnabled()
 			self.Panel:MakePopup()
-			self.Panel:SetMouseInputEnabled(false)
+			self.Panel:SetMouseInputEnabled(mouseLocked)
 
-			self.ForceInputLock = force
+			-- Stay force-locked if the user had mouse locked, so freeInputLock
+			-- (triggered on blur) doesn't release keyboard input either.
+			self.Panel.ForceInputLock = force or mouseLocked
 		end)
 
 		self.Panel:AddFunction( "gmod", "freeInputLock", function()
+			if self.Panel.ForceInputLock then return end
+
 			self.Panel:SetMouseInputEnabled(false)
 			self.Panel:SetKeyboardInputEnabled(false)
-
-			self.ForceInputLock = false
 		end)
 
 		self.Panel:AddFunction( "gmod", "urlChanged", function(url)
 			self.URL = url
 		end)
 
-		self.Panel:RunJavascript("window.createKeyboardToggle();")
+		-- self.Panel:RunJavascript("window.createKeyboardToggle();")
 	end
 
 	self.Panel.OnChildViewCreated = function(self, sourceURL, targetURL)
@@ -107,6 +132,12 @@ function ENT:OpenPage()
 	self.Panel.ConsoleMessage = function(self, message) 
 		if devCvar:GetInt() > 0 then
 			MsgC(message, "\n")
+		end
+	end
+
+	self.Panel.Think = function()
+		if self.Panel:IsMouseInputEnabled() then
+			self.Panel:SetCursor("blank")
 		end
 	end
 end
@@ -163,9 +194,27 @@ function ENT:Draw()
 			self.UiInputs.MouseY = rotatedY / uiHeight * self.HTMLResolution[2]
 		end
 
+		-- When SetMouseInputEnabled is true the browser receives native VGUI mouse
+		-- events at (screen_x - panel_x, screen_y - panel_y).  Shift the panel so
+		-- that value equals the 3D-projected MouseX/Y we are already injecting via
+		-- JS, keeping both coordinate systems in sync and eliminating cursor offset.
+		if self.Panel:IsMouseInputEnabled() and self.UiInputs.MouseX and self.UiInputs.MouseY then
+			self.Panel:SetPos(
+				gui.MouseX() - self.UiInputs.MouseX,
+				gui.MouseY() - self.UiInputs.MouseY
+			)
+		end
+
 		self.Hovering = imgui.IsHovering(0, 0, self.UiSize.x, self.UiSize.y)
 		if self.Hovering and not self:GetLocked() then
-    	self:SimulateMouseInput("mousemove")
+			-- Build the real held-buttons bitmask so mousemove events accurately
+			-- reflect which buttons are down (left=1, right=2, middle=4).
+			-- Without this, button=0 default makes JS always set buttons=1 (left
+			-- held), confusing games like Eaglercraft that read buttons on mousemove.
+			local heldMask = (self._clickState and 1 or 0)
+				+ (self._rightClickState and 2 or 0)
+				+ (self._middleClickState and 4 or 0)
+    		self:SimulateMouseInput("mousemove", 0, heldMask)
 		end
 
 		if self.Hovering and not self:GetLocked() then

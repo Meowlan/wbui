@@ -94,7 +94,7 @@ if (!window.gmod) {
    window.gmod = {};
 }
 
-gmod.simulateMouseInput = function (type, x, y, button = 0) {
+gmod.simulateMouseInput = function (type, x, y, button = 0, buttonsMask = -1) {
    const eventOptions = {
       view: window,
       bubbles: true,
@@ -102,7 +102,9 @@ gmod.simulateMouseInput = function (type, x, y, button = 0) {
       clientX: x,
       clientY: y,
       button: button,
-      buttons: button === 0 ? 1 : button === 1 ? 4 : 2,
+      // buttonsMask >= 0 means caller supplied the exact held-buttons bitmask
+      // (e.g. for mousemove). Otherwise derive it from the single button index.
+      buttons: buttonsMask >= 0 ? buttonsMask : (button === 0 ? 1 : button === 1 ? 4 : 2),
       screenX: x,
       screenY: y,
    };

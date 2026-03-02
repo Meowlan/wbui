@@ -3,15 +3,15 @@ AddCSLuaFile("cl_input.lua")
 AddCSLuaFile("cl_nav.lua")
 AddCSLuaFile("shared.lua")
 
-AddCSLuaFile("imgui.lua")
+AddCSLuaFile("imgui-wbui.lua")
 
 include("shared.lua")
 
-resource.AddSingleFile("addons/wbui/data_static/wbui_input_handler.txt")
+resource.AddSingleFile("data_static/wbui_input_handler.txt")
 
 function ENT:Initialize()
     self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
-    self:SetURL(self.DefaultURL)
+    self:SetTargetURL(self.DefaultURL)
     self:SetMaxDistance(500)
     self:SetHTMLSize(1024)
     self:SetAngle(0)

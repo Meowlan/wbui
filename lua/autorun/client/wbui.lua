@@ -5,9 +5,9 @@ local cmds = {
     {"wbui_refresh", "Refresh", function(panel) panel:Refresh() end, "icon16/arrow_refresh.png"},
     {"wbui_url", "Set URL", function(panel, url) if url then panel:NavigateTo(url) else panel:UrlPrompt() end end, "icon16/world.png"},
     {"wbui_copy_url", "Copy URL", function(panel) panel:UrlCopy() end, "icon16/page_copy.png"},
+    {"wbui_fullscreen", "Fullscreen", function(panel) panel:Fullscreen() end, "icon16/application_view_tile.png"},
 }
 
-local i = 0
 for _, cmd in ipairs(cmds) do
     local cmd, desc, action, icon = unpack(cmd)
 
@@ -20,39 +20,52 @@ for _, cmd in ipairs(cmds) do
 
         action(ent, unpack(args))
     end, nil, desc)
-
-    properties.Add(cmd, {
-        PrependSpacer = i == 0,
-        MenuLabel = desc,
-        MenuIcon = icon,
-        Order = 100000+i, -- why is the edit properties order 90001???
-        Filter = function(self, ent, ply)
-            if not IsValid(ent) then return false end
-            if ent:GetClass() ~= "wbui_panel" then return false end
-            
-            return true
-        end,
-        Action = function(self,ent)
-            action(ent)
-        end,
-        MenuOpen = function(self, option, ent)
-            if not IsValid(ent) then return end
-            if ent:GetClass() ~= "wbui_panel" then return end
-            if self.InternalName ~= "wbui_url" then return end
-
-            local paint = option.Paint
-            option.Paint = function(self, w, h)
-                local url = ent.Panel and ent.Panel.URL or ent.DefaultURL
-                self:SetText("URL - " .. string.sub(url, 1, 50) .. (string.len(url) > 50 and "..." or ""))
-                self:SetTooltip(url)
-
-                paint(self, w, h)
-            end
-        end
-    })
-
-    i=i+1
 end
+
+-- Freaky ahhh way to add our own ui to the context menu
+properties.Add("test", {
+    PrependSpacer = true,
+    MenuLabel = "test",
+    Order = 1000010,
+    Filter = function(self, ent, ply)
+        return IsValid(ent) and ent:GetClass() == "wbui_panel"
+    end,
+    Action = function(self,ent) end,
+    MenuOpen = function(self, option, ent)
+        if not IsValid(ent) or ent:GetClass() ~= "wbui_panel" then return end
+        if self.InternalName ~= "test" then return end
+
+        local Control = vgui.Create( "WbuiControl", option:GetParent() )
+        -- Control:SetSize( 300, 200 )
+        Control:SetEntity(ent)
+        Control:SetWidth( 300 )
+
+        option:Remove()
+    end
+})
+
+function IsValidWbuiPanel(ent)
+    return IsValid(ent) and ent.GetClass and ent:GetClass() == "wbui_panel" and IsValid(ent.Panel)
+end
+
+-- Show an unobtrusive "F8 to unlock" hint whenever a wbui_panel has keyboard focus
+hook.Add("HUDPaint", "wbui_f8_hint", function()
+    local focused = vgui.GetKeyboardFocus()
+    if not IsValid(focused) or not focused._isWbui then return end
+
+    local msg = "F8 to unlock"
+    surface.SetFont("DermaDefault")
+    local tw, th = surface.GetTextSize(msg)
+    local pw, ph = tw + 16, th + 8
+    local px = math.floor((ScrW() - pw) / 2)
+    local py = ScrH() - ph - 24
+    draw.RoundedBox(5, px, py, pw, ph, Color(20, 20, 30, 170))
+    surface.SetDrawColor(50, 180, 100, 120)
+    surface.DrawOutlinedRect(px, py, pw, ph, 1)
+    surface.SetTextColor(190, 240, 190, 210)
+    surface.SetTextPos(px + 8, py + 4)
+    surface.DrawText(msg)
+end)
 
 function WbuiPrint(...)
 	MsgC(Color(136, 223, 218), "[WBUI] ", Color(187, 187, 187), ..., "\n")
