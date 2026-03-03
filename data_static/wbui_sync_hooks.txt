@@ -1,0 +1,354 @@
+// ─── WBUI Sync Hooks ───────────────────────────────────────
+// Injected into the Conductor's browser to detect navigation,
+// media state changes, scroll position, and input for relay to Viewers.
+
+(function() {
+    "use strict";
+    if (window.__wbuiSyncHooked) return;
+    window.__wbuiSyncHooked = true;
+
+    // ── SPA Navigation Detection ─────────────────────────
+    var origPush = history.pushState;
+    var origReplace = history.replaceState;
+
+    history.pushState = function() {
+        origPush.apply(this, arguments);
+        if (window.gmod && window.gmod.syncUrlChanged)
+            window.gmod.syncUrlChanged(location.href);
+    };
+
+    history.replaceState = function() {
+        origReplace.apply(this, arguments);
+        if (window.gmod && window.gmod.syncUrlChanged)
+            window.gmod.syncUrlChanged(location.href);
+    };
+
+    window.addEventListener("popstate", function() {
+        if (window.gmod && window.gmod.syncUrlChanged)
+            window.gmod.syncUrlChanged(location.href);
+    });
+
+    // ── URL Polling Fallback ─────────────────────────────
+    var __wbuiLastUrl = location.href;
+    setInterval(function() {
+        if (location.href !== __wbuiLastUrl) {
+            __wbuiLastUrl = location.href;
+            if (window.gmod && window.gmod.syncUrlChanged)
+                window.gmod.syncUrlChanged(location.href);
+        }
+    }, 500);
+
+    // YouTube-specific navigation event
+    window.addEventListener("yt-navigate-finish", function() {
+        if (window.gmod && window.gmod.syncUrlChanged)
+            window.gmod.syncUrlChanged(location.href);
+    });
+
+    // ── Input Element Syncing ────────────────────────────
+    // Strategy: event-driven + polling fallback for frameworks
+    // that swallow events (YouTube, React, etc.)
+    function getElementSelector(el) {
+        if (!el || el === document.body || el === document.documentElement) return null;
+        if (el.id) return "#" + CSS.escape(el.id);
+        var parts = [];
+        var cur = el;
+        while (cur && cur !== document.body && cur !== document.documentElement) {
+            var tag = cur.tagName.toLowerCase();
+            if (cur.id) {
+                parts.unshift(tag + "#" + CSS.escape(cur.id));
+                break;
+            }
+            var parent = cur.parentElement;
+            if (parent) {
+                var siblings = Array.from(parent.children).filter(function(c) {
+                    return c.tagName === cur.tagName;
+                });
+                if (siblings.length > 1) {
+                    var idx = siblings.indexOf(cur) + 1;
+                    tag += ":nth-of-type(" + idx + ")";
+                }
+            }
+            parts.unshift(tag);
+            cur = parent;
+        }
+        return parts.join(" > ");
+    }
+
+    function getInputValue(el) {
+        if (!el) return null;
+        if (el.isContentEditable) return el.textContent;
+        var tag = el.tagName.toLowerCase();
+        if (tag === "input" || tag === "textarea") return el.value;
+        return null;
+    }
+
+    function isInputElement(el) {
+        if (!el) return false;
+        if (el.isContentEditable) return true;
+        var tag = el.tagName.toLowerCase();
+        return tag === "input" || tag === "textarea";
+    }
+
+    // Event-driven capture (works for standard inputs)
+    var inputTimers = {};
+    document.addEventListener("input", function(e) {
+        var el = e.target;
+        if (!el || !window.gmod || !window.gmod.syncInput) return;
+        if (!isInputElement(el)) return;
+
+        var selector = getElementSelector(el);
+        if (!selector) return;
+        clearTimeout(inputTimers[selector]);
+        inputTimers[selector] = setTimeout(function() {
+            window.gmod.syncInput(JSON.stringify({
+                selector: selector,
+                value: getInputValue(el) || ""
+            }));
+        }, 50);
+    }, true);
+
+    // Polling fallback for focused input (catches YouTube search, React, etc.)
+    var __wbuiLastInputValue = "";
+    var __wbuiLastInputSelector = "";
+    setInterval(function() {
+        if (!window.gmod || !window.gmod.syncInput) return;
+        var el = document.activeElement;
+        if (!el || !isInputElement(el)) {
+            __wbuiLastInputValue = "";
+            __wbuiLastInputSelector = "";
+            return;
+        }
+        var selector = getElementSelector(el);
+        if (!selector) return;
+        var value = getInputValue(el) || "";
+
+        if (selector !== __wbuiLastInputSelector || value !== __wbuiLastInputValue) {
+            __wbuiLastInputSelector = selector;
+            __wbuiLastInputValue = value;
+            window.gmod.syncInput(JSON.stringify({
+                selector: selector,
+                value: value
+            }));
+        }
+    }, 100);
+
+    // ── YouTube Ad Detection ─────────────────────────────
+    // When YouTube is playing an ad, suppress media sync to avoid
+    // desync caused by different ad durations/presence.
+    window.__wbuiIsYouTubeAd = function() {
+        // YouTube adds .ad-showing to the player container during ads
+        var player = document.querySelector(".html5-video-player");
+        if (player && player.classList.contains("ad-showing")) return true;
+        // Also check for ad overlay elements
+        if (document.querySelector(".ytp-ad-player-overlay")) return true;
+        if (document.querySelector(".ytp-ad-text")) return true;
+        return false;
+    };
+
+    // ── HTMLMediaElement Hooking ──────────────────────────
+    var proto = HTMLMediaElement.prototype;
+    var origPlay = proto.play;
+    var origPause = proto.pause;
+
+    proto.play = function() {
+        var el = this;
+        if (window.gmod && window.gmod.syncMediaEvent && !window.__wbuiIsYouTubeAd()) {
+            window.gmod.syncMediaEvent(JSON.stringify({
+                type: "play",
+                currentTime: el.currentTime,
+                playbackRate: el.playbackRate
+            }));
+        }
+        return origPlay.apply(this, arguments);
+    };
+
+    proto.pause = function() {
+        var el = this;
+        if (window.gmod && window.gmod.syncMediaEvent && !window.__wbuiIsYouTubeAd()) {
+            window.gmod.syncMediaEvent(JSON.stringify({
+                type: "pause",
+                currentTime: el.currentTime,
+                playbackRate: el.playbackRate
+            }));
+        }
+        return origPause.apply(this, arguments);
+    };
+
+    document.addEventListener("seeked", function(e) {
+        if (e.target instanceof HTMLMediaElement) {
+            if (window.gmod && window.gmod.syncMediaEvent && !window.__wbuiIsYouTubeAd()) {
+                window.gmod.syncMediaEvent(JSON.stringify({
+                    type: "seek",
+                    currentTime: e.target.currentTime,
+                    playbackRate: e.target.playbackRate
+                }));
+            }
+        }
+    }, true);
+
+    // ── Periodic Media Time Reporting ────────────────────
+    setInterval(function() {
+        if (!window.gmod || !window.gmod.syncMediaTick) return;
+        // Skip sync during ads
+        if (window.__wbuiIsYouTubeAd()) return;
+
+        var media = window.__wbuiGetPrimaryMedia && window.__wbuiGetPrimaryMedia();
+        if (!media) return;
+
+        window.gmod.syncMediaTick(JSON.stringify({
+            currentTime: media.currentTime,
+            paused: media.paused,
+            playbackRate: media.playbackRate,
+            duration: media.duration
+        }));
+    }, 3000);
+
+    window.__wbuiGetPrimaryMedia = function() {
+        var videos = Array.from(document.querySelectorAll("video"));
+        if (videos.length === 0) return null;
+        return videos.reduce(function(a, b) {
+            var areaA = (a.offsetWidth || a.videoWidth || 0) * (a.offsetHeight || a.videoHeight || 0);
+            var areaB = (b.offsetWidth || b.videoWidth || 0) * (b.offsetHeight || b.videoHeight || 0);
+            return areaA >= areaB ? a : b;
+        });
+    };
+
+    // ── Fullscreen State Sync ────────────────────────────
+    // Detect when the Conductor enters/exits fullscreen (via polyfill)
+    // and relay the state + which element to fullscreen.
+    document.addEventListener("fullscreenchange", function() {
+        if (!window.gmod || !window.gmod.syncFullscreen) return;
+        var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        var selector = fsEl ? getElementSelector(fsEl) : null;
+        window.gmod.syncFullscreen(JSON.stringify({
+            active: !!fsEl,
+            selector: selector || ""
+        }));
+    });
+    document.addEventListener("webkitfullscreenchange", function() {
+        if (!window.gmod || !window.gmod.syncFullscreen) return;
+        var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+        var selector = fsEl ? getElementSelector(fsEl) : null;
+        window.gmod.syncFullscreen(JSON.stringify({
+            active: !!fsEl,
+            selector: selector || ""
+        }));
+    });
+
+    // ── Scroll Position Reporting ────────────────────────
+    var scrollTimer = null;
+    window.addEventListener("scroll", function() {
+        if (!window.gmod || !window.gmod.syncScroll) return;
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(function() {
+            var docEl = document.documentElement;
+            var maxX = Math.max(1, docEl.scrollWidth - docEl.clientWidth);
+            var maxY = Math.max(1, docEl.scrollHeight - docEl.clientHeight);
+            window.gmod.syncScroll(JSON.stringify({
+                x: window.scrollX / maxX,
+                y: window.scrollY / maxY
+            }));
+        }, 200);
+    }, { passive: true });
+
+    // ── Viewer-side helpers ──────────────────────────────
+    window.__wbuiApplyMediaState = function(type, currentTime, playbackRate) {
+        // Skip if viewer is in an ad
+        if (window.__wbuiIsYouTubeAd()) return;
+
+        var media = window.__wbuiGetPrimaryMedia && window.__wbuiGetPrimaryMedia();
+        if (!media) return;
+
+        if (type === "play") {
+            media.playbackRate = playbackRate;
+            media.currentTime = currentTime;
+            media.play().catch(function() {});
+        } else if (type === "pause") {
+            media.currentTime = currentTime;
+            media.pause();
+        } else if (type === "seek") {
+            media.currentTime = currentTime;
+        }
+    };
+
+    window.__wbuiApplyMediaTick = function(currentTime, paused, playbackRate, duration) {
+        // Skip if viewer is in an ad
+        if (window.__wbuiIsYouTubeAd()) return;
+
+        var media = window.__wbuiGetPrimaryMedia && window.__wbuiGetPrimaryMedia();
+        if (!media) return;
+
+        if (!isFinite(duration)) return;
+
+        var drift = Math.abs(media.currentTime - currentTime);
+
+        if (drift > 3) {
+            media.currentTime = currentTime;
+        } else if (drift > 0.5) {
+            media.playbackRate = media.currentTime < currentTime ? 1.05 : 0.95;
+            setTimeout(function() {
+                media.playbackRate = playbackRate;
+            }, 2000);
+        }
+
+        if (paused && !media.paused) {
+            media.pause();
+        } else if (!paused && media.paused) {
+            media.play().catch(function() {});
+        }
+    };
+
+    window.__wbuiApplyScroll = function(ratioX, ratioY) {
+        var docEl = document.documentElement;
+        var maxX = Math.max(1, docEl.scrollWidth - docEl.clientWidth);
+        var maxY = Math.max(1, docEl.scrollHeight - docEl.clientHeight);
+        window.scrollTo(ratioX * maxX, ratioY * maxY);
+    };
+
+    window.__wbuiApplyInput = function(selector, value) {
+        var el = document.querySelector(selector);
+        if (!el) return;
+        var tag = el.tagName.toLowerCase();
+        if (el.isContentEditable) {
+            el.textContent = value;
+        } else if (tag === "input" || tag === "textarea") {
+            var nativeSetter = Object.getOwnPropertyDescriptor(
+                tag === "textarea" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype,
+                "value"
+            );
+            if (nativeSetter && nativeSetter.set) {
+                nativeSetter.set.call(el, value);
+            } else {
+                el.value = value;
+            }
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+    };
+
+    window.__wbuiApplyFullscreen = function(active, selector) {
+        var isCurrentlyFs = !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+        // YouTube: click the actual fullscreen button so YouTube's internal
+        // CSS classes (ytp-fullscreen) stay in sync with the polyfill state.
+        var ytFsBtn = document.querySelector(".ytp-fullscreen-button");
+        if (ytFsBtn) {
+            if (active && !isCurrentlyFs) ytFsBtn.click();
+            else if (!active && isCurrentlyFs) ytFsBtn.click();
+            return;
+        }
+
+        // Generic: use the polyfill's requestFullscreen / exitFullscreen
+        if (active && !isCurrentlyFs) {
+            var el = selector ? document.querySelector(selector) : null;
+            if (!el) {
+                el = document.querySelector("video")
+                  || document.documentElement;
+            }
+            if (el && el.requestFullscreen) {
+                el.requestFullscreen().catch(function() {});
+            }
+        } else if (!active && isCurrentlyFs) {
+            document.exitFullscreen().catch(function() {});
+        }
+    };
+})();

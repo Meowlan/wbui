@@ -1,6 +1,7 @@
 AddCSLuaFile("cl_init.lua")
 AddCSLuaFile("cl_input.lua")
 AddCSLuaFile("cl_nav.lua")
+AddCSLuaFile("cl_session.lua")
 AddCSLuaFile("shared.lua")
 
 AddCSLuaFile("imgui-wbui.lua")
@@ -8,6 +9,7 @@ AddCSLuaFile("imgui-wbui.lua")
 include("shared.lua")
 
 resource.AddSingleFile("data_static/wbui_input_handler.txt")
+resource.AddSingleFile("data_static/wbui_sync_hooks.txt")
 
 function ENT:Initialize()
     self:SetScreenModel("models/hunter/plates/plate1x2.mdl")
@@ -17,6 +19,8 @@ function ENT:Initialize()
     self:SetAngle(0)
     self:SetLocked(false)
     self:SetVolume(0.5)
+    self:SetSyncMode(WBUI_SYNC_LOCAL)
+    self:SetConductor(NULL)
     
     self:SetModel("models/hunter/plates/plate1x2.mdl")
     self:PhysicsInit(SOLID_VPHYSICS)

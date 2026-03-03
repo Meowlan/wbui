@@ -150,7 +150,7 @@ end
 local PANEL = { Entity = nil }
 
 function PANEL:Init()
-    self:SetTall(88)
+    self:SetTall(122)
 
     self.Container = vgui.Create("DPanel", self)
     self.Container:Dock(FILL)
@@ -321,6 +321,25 @@ function PANEL:Init()
     self.LockInputBtn:SetWide(26)
     self.LockInputBtn:DockMargin(2, 0, 0, 0)
 
+    -- Panel fullscreen button (pops browser to fill screen)
+    self.PanelFsBtn = MakeToggleBtn(
+        self.BottomRow,
+        "icon16/monitor.png", "icon16/monitor_delete.png",
+        "Fullscreen", "Exit Fullscreen",
+        function(btn, newState)
+            if not IsValidWbuiPanel(self.Entity) then return end
+            if newState then
+                self.Entity:EnterPanelFullscreen()
+            else
+                self.Entity:ExitPanelFullscreen()
+            end
+            btn:SetActive(newState)
+        end
+    )
+    self.PanelFsBtn:Dock(RIGHT)
+    self.PanelFsBtn:SetWide(26)
+    self.PanelFsBtn:DockMargin(2, 0, 0, 0)
+
     -- "Vol" label
     local volLabel = vgui.Create("DLabel", self.BottomRow)
     volLabel:Dock(LEFT)
@@ -329,13 +348,138 @@ function PANEL:Init()
     volLabel:SetFont("DermaDefault")
     volLabel:SetTextColor(C.labelDim)
     volLabel:DockMargin(2, 0, 0, 0)
+
+    -- ── divider ───────────────────────────────────────────
+    MakeDivider(self.Container)
+
+    -- ── Row 3: shared browsing controls ──────────────────
+    self.SyncRow = vgui.Create("DPanel", self.Container)
+    self.SyncRow:Dock(TOP)
+    self.SyncRow:SetTall(26)
+    self.SyncRow:SetPaintBackground(false)
+
+    -- Share / Unshare toggle
+    self.ShareBtn = MakeToggleBtn(
+        self.SyncRow,
+        "icon16/world_link.png", "icon16/world_delete.png",
+        "Enable Shared Browsing", "Disable Shared Browsing",
+        function(btn, newState)
+            if not IsValidWbuiPanel(self.Entity) then return end
+            local mode = newState and WBUI_SYNC_DOM or WBUI_SYNC_LOCAL
+            self.Entity:SyncRequestSetMode(mode)
+            btn:SetActive(newState)
+        end
+    )
+    self.ShareBtn:Dock(LEFT)
+    self.ShareBtn:SetWide(26)
+    self.ShareBtn:DockMargin(0, 0, 2, 0)
+
+    -- "Shared" label
+    self.SyncLabel = vgui.Create("DLabel", self.SyncRow)
+    self.SyncLabel:Dock(LEFT)
+    self.SyncLabel:SetWide(44)
+    self.SyncLabel:SetText("Share")
+    self.SyncLabel:SetFont("DermaDefault")
+    self.SyncLabel:SetTextColor(C.labelDim)
+    self.SyncLabel:DockMargin(4, 0, 0, 0)
+
+    -- Take Control button (requests takeover, conductor must approve)
+    self.TakeControlBtn = MakeFancyBtn(self.SyncRow, "icon16/controller.png", "Request Control", function()
+        if not IsValidWbuiPanel(self.Entity) then return end
+        self.Entity:SyncRequestTakeConductor()
+    end)
+    self.TakeControlBtn:Dock(LEFT)
+    self.TakeControlBtn:SetWide(26)
+    self.TakeControlBtn:DockMargin(4, 0, 2, 0)
+
+    -- Join / Leave share toggle
+    self.JoinShareBtn = MakeToggleBtn(
+        self.SyncRow,
+        "icon16/group_go.png", "icon16/group_delete.png",
+        "Join Shared Session", "Leave Shared Session",
+        function(btn, newState)
+            if not IsValidWbuiPanel(self.Entity) then return end
+            if newState then
+                self.Entity:SyncJoinShare()
+                -- Don't set active yet — the Derma_Query callback will set _syncOptedIn
+            else
+                self.Entity:SyncLeaveShare()
+                btn:SetActive(false)
+            end
+        end
+    )
+    self.JoinShareBtn:Dock(LEFT)
+    self.JoinShareBtn:SetWide(26)
+    self.JoinShareBtn:DockMargin(4, 0, 2, 0)
+
+    -- Status label (shows current conductor name or "Local")
+    self.SyncStatus = vgui.Create("DLabel", self.SyncRow)
+    self.SyncStatus:Dock(FILL)
+    self.SyncStatus:SetFont("DermaDefault")
+    self.SyncStatus:SetTextColor(C.urlText)
+    self.SyncStatus:DockMargin(4, 0, 4, 0)
+    self.SyncStatus:SetText("")
 end
 
 function PANEL:SetEntity(ent)
     assert(IsValid(ent))
     assert(ent:GetClass() == "wbui_panel")
     self.Entity = ent
+
+    -- Update sync UI state
+    if self.ShareBtn then
+        self.ShareBtn:SetActive(ent:IsShared())
+    end
+
     self:InvalidateLayout()
+end
+
+function PANEL:Think()
+    if not IsValid(self.Entity) then return end
+
+    -- Live-update shared status label
+    if self.SyncStatus then
+        local ent = self.Entity
+        if not ent:IsShared() then
+            self.SyncStatus:SetText("Local")
+            self.SyncStatus:SetTextColor(C.labelDim)
+        else
+            local conductor = ent:GetConductor()
+            if IsValid(conductor) then
+                local prefix = ent:IsConductor(LocalPlayer()) and "You" or conductor:Nick()
+                self.SyncStatus:SetText(prefix .. " driving")
+                self.SyncStatus:SetTextColor(ent:IsConductor(LocalPlayer()) and C.lockOn or C.accent)
+            else
+                self.SyncStatus:SetText("No conductor")
+                self.SyncStatus:SetTextColor(C.labelDim)
+            end
+        end
+    end
+
+    -- Update share toggle to match actual state
+    if self.ShareBtn then
+        self.ShareBtn:SetActive(self.Entity:IsShared())
+    end
+
+    -- Update join share toggle
+    if self.JoinShareBtn then
+        local ent = self.Entity
+        local isShared = ent:IsShared()
+        local isConductor = ent:IsConductor(LocalPlayer())
+        self.JoinShareBtn:SetVisible(isShared and not isConductor)
+        self.JoinShareBtn:SetActive(ent._syncOptedIn == true)
+    end
+
+    -- Show take control only when opted-in as viewer (not conductor)
+    if self.TakeControlBtn then
+        local ent = self.Entity
+        self.TakeControlBtn:SetVisible(ent:IsShared() and not ent:IsConductor(LocalPlayer()))
+    end
+
+    -- Update panel fullscreen toggle to match actual state
+    if self.PanelFsBtn then
+        self.PanelFsBtn:SetActive(self.Entity:IsPanelFullscreen())
+    end
 end
 
 function PANEL:Paint(w, h)
