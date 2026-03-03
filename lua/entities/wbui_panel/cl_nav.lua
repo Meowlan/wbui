@@ -1,19 +1,26 @@
 local lastHint = 0
 
 function ENT:NavigateBack()
+    if self:IsLocalViewer() then return end
     self.Panel:RunJavascript("window.history.back();")
 end
 
 function ENT:NavigateForward()
+    if self:IsLocalViewer() then return end
     self.Panel:RunJavascript("window.history.forward();")
 end
 
 function ENT:Refresh()
+    if self:IsLocalViewer() then return end
     self.Panel:Refresh()
 end
 
 function ENT:Home()
+    if self:IsLocalViewer() then return end
     self.Panel:OpenURL(self.DefaultURL)
+    if self:IsLocalConductor() then
+        self:SyncSendNav(self.DefaultURL)
+    end
 end
 
 function ENT:SetVolume(volume)
@@ -21,12 +28,16 @@ function ENT:SetVolume(volume)
 end
 
 function ENT:NavigateTo(url)
+    if self:IsLocalViewer() then return end
     if type(url) ~= "string" then
         WbuiError("Provide a valid url.")
         return
     end
     
     self.Panel:OpenURL(url)
+    if self:IsLocalConductor() then
+        self:SyncSendNav(url)
+    end
 end
 
 function ENT:GetURL()

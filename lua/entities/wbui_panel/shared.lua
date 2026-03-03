@@ -15,6 +15,11 @@ ENT.RenderGroup = RENDERGROUP_OPAQUE
 
 ENT.DefaultURL = "https://www.google.com"
 
+-- Sync mode constants
+WBUI_SYNC_LOCAL    = 0  -- No sync, each client is independent (default)
+WBUI_SYNC_DOM      = 1  -- DOM sync: Conductor drives, Viewers follow URL/media/scroll
+-- WBUI_SYNC_RELAY  = 2  -- Future: pixel-level relay streaming
+
 function ENT:SetupDataTables()
 	self:NetworkVar( "Int",    0, "HTMLSize", { KeyName = "htmlsize", Edit = { type = "Int", order = 1, min = 1, max = 4096 } } )
 	self:NetworkVar( "String", 1, "TargetURL", { KeyName = "TargetURL", Edit = { type = "String", order = 2 } } )
@@ -23,4 +28,16 @@ function ENT:SetupDataTables()
 	self:NetworkVar( "Float",  4, "MaxDistance", { KeyName = "maxdistance", Edit = { type = "Float", order = 4, min = 1, max = 10000 } } )
 	self:NetworkVar( "Bool",   5, "Locked", { KeyName = "locked", Edit = { type = "Bool", order = 6 } } )
 	self:NetworkVar( "Float",  6, "Volume", { KeyName = "volume", Edit = { type = "Float", order = 7, min = 0, max = 1 } })
+
+	-- Shared browsing
+	self:NetworkVar( "Int",    7, "SyncMode", { KeyName = "syncmode", Edit = { type = "Int", order = 8, min = 0, max = 1 } } )
+	self:NetworkVar( "Entity", 0, "Conductor" )
+end
+
+function ENT:IsShared()
+	return self:GetSyncMode() ~= WBUI_SYNC_LOCAL
+end
+
+function ENT:IsConductor(ply)
+	return IsValid(self:GetConductor()) and self:GetConductor() == ply
 end

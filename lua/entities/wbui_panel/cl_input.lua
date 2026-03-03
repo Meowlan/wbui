@@ -1,5 +1,6 @@
 function ENT:SimulateMouseInput(type, button, buttonsMask)
     if not IsValid(self.Panel) or not self.UiInputs.MouseX or not self.UiInputs.MouseY then return end
+    if self:IsLocalViewer() then return end
 
     -- When mouse input is enabled, the DHTML panel receives native VGUI mouse
     -- events directly (mousedown/mouseup/mousemove), so JS simulation would
@@ -20,6 +21,7 @@ end
 
 function ENT:SimulateScroll(delta)
     if not IsValid(self.Panel) then return end
+    if self:IsLocalViewer() then return end
 
     local scrollScript = string.format([[
         window.scrollBy(0, %d);
@@ -56,6 +58,7 @@ end
 
 function ENT:HandleInputsCreateMove(cmd)
     if self:GetLocked() then return end
+    if self:IsLocalViewer() then return end
 
     -- when cursor is visible (e.g. holding C), VGUI captures mouse clicks so
     -- IN_ATTACK is never set in the usercmd; click state is handled in Think instead
@@ -125,6 +128,7 @@ end
 
 function ENT:HandleCursorVisibleInput()
     -- called from Think when cursor is visible
+    if self:IsLocalViewer() then return end
     -- use raw IsMouseDown since VGUI captures clicks and never sets IN_ATTACK
     local hoveredPanel = vgui.GetHoveredPanel()
     local panelBlocking = IsValid(hoveredPanel) and hoveredPanel ~= vgui.GetWorldPanel() and hoveredPanel:GetName() ~= "ContextMenu"
