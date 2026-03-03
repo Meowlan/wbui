@@ -153,6 +153,7 @@ function ENT:OpenPage()
 
 		self.Panel:AddFunction( "gmod", "freeInputLock", function()
 			if self.Panel.ForceInputLock then return end
+			if ent:IsPanelFullscreen() then return end
 
 			self.Panel:SetMouseInputEnabled(false)
 			self.Panel:SetKeyboardInputEnabled(false)
@@ -201,6 +202,7 @@ function ENT:EnterPanelFullscreen()
 		alpha = self.Panel:GetAlpha(),
 		mouse = self.Panel:IsMouseInputEnabled(),
 		keyboard = self.Panel:IsKeyboardInputEnabled(),
+		forceInputLock = self.Panel.ForceInputLock,
 	}
 
 	self.Panel:SetPos(0, 0)
@@ -209,6 +211,7 @@ function ENT:EnterPanelFullscreen()
 	self.Panel:MakePopup()
 	self.Panel:SetMouseInputEnabled(true)
 	self.Panel:SetKeyboardInputEnabled(true)
+	self.Panel.ForceInputLock = true
 	self.Panel:SetZPos(32767)
 
 	-- Overlay exit button — parented to the panel so it draws on top
@@ -246,6 +249,7 @@ function ENT:ExitPanelFullscreen()
 	self.Panel:SetAlpha(s.alpha or 0)
 	self.Panel:SetMouseInputEnabled(s.mouse or false)
 	self.Panel:SetKeyboardInputEnabled(s.keyboard or false)
+	self.Panel.ForceInputLock = s.forceInputLock or false
 	self.Panel:SetZPos(0)
 	self._savedPanelState = nil
 
