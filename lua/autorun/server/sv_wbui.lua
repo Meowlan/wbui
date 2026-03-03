@@ -1,6 +1,6 @@
 AddCSLuaFile("autorun/client/cl_wbui.lua")
 AddCSLuaFile("autorun/client/cl_wbui_vgui.lua")
-AddCSLuaFile("wbui/wbui-warnings.lua")
+AddCSLuaFile("wbui/cef_detection.lua")
 
 resource.AddSingleFile("data_static/wbui_input_handler.txt")
 resource.AddSingleFile("data_static/wbui_fullscreen_polyfill.txt")
